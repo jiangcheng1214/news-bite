@@ -17,7 +17,7 @@ class TwitterUserLooker:
         url = 'https://api.twitter.com/2/users?' + URLParamsString
         response = requests.get(
             url, headers={'authorization': f'Bearer {self.api_key}'})
-        # print(f"UserMetadata - url: {url} status: {response.status_code}")
+        # info(f"UserMetadata - url: {url} status: {response.status_code}")
         responseJson = response.json()
         jsonData = responseJson['data']
         return jsonData[0]

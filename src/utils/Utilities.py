@@ -1,6 +1,10 @@
 from enum import Enum
 import datetime
 
+RAW_TWEET_FILE_PREFIX = 'raw_'
+CLEAN_TWEET_FILE_PREFIX = 'cln_'
+SUM_TWEET_FILE_PREFIX = 'sum_'
+
 
 class TwitterTopic(Enum):
     FINANCIAL = 'financial'
@@ -21,3 +25,7 @@ def get_current_hour():
 def get_current_date():
     now = datetime.datetime.now()
     return now.strftime("%Y%m%d")
+
+
+def get_date(time):
+    return time.strftime("%Y%m%d")

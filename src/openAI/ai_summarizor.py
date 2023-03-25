@@ -32,28 +32,17 @@ def gpt3_5_tweets_summarize(tweets, topic: str, num_retries: int = 3):
             )
             return response
         except APIError as e:
-            print(f"Error occurred: {e}")
+            info(f"Error occurred: {e}")
             time.sleep(10)
         except InvalidRequestError as e:
-            print(f"Error occurred: {e}")
+            info(f"Error occurred: {e}")
             time.sleep(10)
         except OpenAIError as e:
-            print(f"Error occurred: {e}")
+            info(f"Error occurred: {e}")
             time.sleep(10)
     raise ValueError("Exceeded maximum number of retries")
 
 
-def gpt3_5_tweets_summarize_with_file(file_path, topic: str):
-    tweets = []
-    with open(file_path) as f:
-        for line in f.readlines():
-            if (not line.split(' ')[0].isnumeric()):
-                print(f"line is invalid tweet record {line}")
-                continue
-            tweets.append(line)
-    return gpt3_5_tweets_summarize(tweets, topic)
-
-
 # path = '/Users/chengjiang/Dev/NewsBite/data/tweets/financial/cleaned_1679536571.jsons'
 # response = gpt3_5_tweets_summarize_with_file(path, TwitterTopic.FINANCIAL)
-# print(response)
+# info(response)

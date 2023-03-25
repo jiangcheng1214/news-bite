@@ -1,6 +1,6 @@
 import json
 import os
-import time
+from utils.Logging import info
 from typing import List
 
 import requests
@@ -33,17 +33,9 @@ class TwitterFilterRulesManager:
         if ('data' in active_rules):
             deletion_response = self.delete_all_active_rules(
                 active_rules['data'])
-            print('Deletion response.', deletion_response)
+            info(f'Deletion response. {deletion_response}')
         setting_rules_response = self.set_rules(local_rules)
-        print('SetRules response:', setting_rules_response)
-        # rules_file_path = os.path.join(os.path.dirname(os.path.abspath(
-        #     __file__)), f'rules/temp/{str(int(time.time()))}.json')
-        # with open(rules_file_path, 'w') as f:
-        #     json.dump(setting_rules_response['data'], f, indent=2)
-        # new_active_rules = self.get_active_rules()
-        # if ('data' in new_active_rules):
-        #     print(
-        #         f"rules updated. New active rules: {new_active_rules['data']}")
+        info(f'SetRules response: {setting_rules_response}')
 
     def get_local_rules(self):
         if not os.path.exists(self.rules_file_path):

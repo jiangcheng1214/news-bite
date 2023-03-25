@@ -1,6 +1,6 @@
 import json
 import time
-import sys
+from utils.Logging import info
 from typing import Dict
 from urllib.parse import urlencode
 from dotenv import load_dotenv
@@ -61,7 +61,7 @@ class TwitterFilteredStreamer:
             response = requests.get(
                 self.stream_url, headers=headers, stream=True, timeout=300)
             if response.status_code != 200:
-                print(
+                info(
                     f"Failed to connect to stream: {response.status_code} {response.reason}.")
                 attempts += 1
                 time.sleep(retry_delay)
@@ -76,16 +76,16 @@ class TwitterFilteredStreamer:
                                 self.data_callback(
                                     data['data'], matching_rule_tag)
                         except json.JSONDecodeError as e:
-                            print(
+                            info(
                                 f"Failed to load json due to json.JSONDecodeError.")
                 except (requests.exceptions.ConnectionError):
-                    print(
+                    info(
                         f'Retrying in {retry_delay} seconds due to ConnectionError')
                     attempts += 1
                     time.sleep(retry_delay)
                 except (TimeoutError):
                     attempts += 1
-                    print(
+                    info(
                         f'Retrying in {retry_delay} seconds due to TimeoutError')
                     time.sleep(retry_delay)
-        print('Max attempt hit')
+        info('Max attempt hit')

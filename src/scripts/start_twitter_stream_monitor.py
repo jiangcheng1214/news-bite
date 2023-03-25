@@ -3,11 +3,12 @@ import json
 import os
 import re
 from dotenv import load_dotenv
+from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.twitter_streamer import TwitterFilteredStreamer
 from twitter.twitter_user_looker import TwitterUserLooker
-from utils.Utilities import TwitterTopic
-from openAI.ai_summarizor import gpt3_5_tweets_summarize, gpt3_5_tweets_summarize_with_file
+from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX
+from openAI.ai_summarizor import gpt3_5_tweets_summarize
 load_dotenv()
 key = os.getenv("TWITTER_KEY")
 
@@ -15,7 +16,7 @@ user_looker = TwitterUserLooker(key)
 total_received = 0
 complete_tweets_received_by_topic = {topic.value: [] for topic in TwitterTopic}
 raw_tweets_file_writer_by_topic = {topic.value: BufferedFileWriter(os.path.join(os.path.dirname(
-    __file__),  '..', '..', 'data', 'tweets', topic.value), 'raw_')
+    __file__),  '..', '..', 'data', 'tweets', topic.value), RAW_TWEET_FILE_PREFIX)
     for topic in TwitterTopic}
 tweet_count_by_topic = {topic.value: 0 for topic in TwitterTopic}
 
@@ -34,7 +35,7 @@ def callback(tweet, matching_topic):
     stats_string = f'New tweet received from {author_name} with {followers_count} followers.'
     for t in TwitterTopic:
         stats_string += f' {t.value}:{tweet_count_by_topic[t.value]}'
-    print(stats_string)
+    info(stats_string)
     raw_tweets_file_writer_by_topic[matching_topic].append(
         json.dumps(complete_tweet_received))
 
@@ -61,14 +62,14 @@ def callback(tweet, matching_topic):
     #         for cleaned_tweet in cleaned_tweets:
     #             f.write(cleaned_tweet)
     #             f.write('\n')
-    #     print(f"clean tweets have been written to {cleaned_tweet_file_path}")
+    #     info(f"clean tweets have been written to {cleaned_tweet_file_path}")
     #     summary_file_path = os.path.join(
     #         data_folder_path, f'summary_{ts}.txt')
     #     summarize_result = gpt3_5_tweets_summarize(
     #         cleaned_tweets, matching_topic)
     #     with open(summary_file_path, 'a') as f:
     #         json.dump(summarize_result, f)
-    # print(
+    # info(
     #     f"summary_path: {cleaned_tweet_file_path}, tweet_count:{len(cleaned_tweets)}, total_tokens:{summarize_result['usage']['total_tokens']}")
     # complete_tweets_received_by_topic[matching_topic] = []
 
