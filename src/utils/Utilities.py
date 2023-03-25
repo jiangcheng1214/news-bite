@@ -2,7 +2,7 @@ from enum import Enum
 import datetime
 
 RAW_TWEET_FILE_PREFIX = 'raw_'
-CLEAN_TWEET_FILE_PREFIX = 'cln_'
+CLEAN_TWEET_FILE_PREFIX = 'clean_'
 SUM_TWEET_FILE_PREFIX = 'sum_'
 
 

@@ -54,7 +54,7 @@ class TweetDataProcessor:
             file_index = file_path.split(RAW_TWEET_FILE_PREFIX)[-1]
             clean_file_path = os.path.join(
                 dir_path, f"{CLEAN_TWEET_FILE_PREFIX}{file_index}")
-            with open(clean_file_path, 'a') as f:
+            with open(clean_file_path, 'w') as f:
                 for clean_tweet in clean_tweets:
                     f.write(clean_tweet)
                     f.write('\n')
