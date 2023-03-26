@@ -25,6 +25,8 @@ class TweetDataProcessor:
     def _get_files_to_process_for_date(self, date, back_fill=False):
         hour_ago = datetime.now() - timedelta(hours=1)
         daily_data_folder = os.path.join(self.master_folder, self.topic, date)
+        if not os.path.exists(daily_data_folder):
+            return []
         files_to_process = []
         for file_name in os.listdir(daily_data_folder):
             if file_name.startswith(RAW_TWEET_FILE_PREFIX):
