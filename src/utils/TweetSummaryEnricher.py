@@ -1,0 +1,63 @@
+import spacy
+import json
+from openai.embeddings_utils import get_embedding
+import numpy as np
+import openai
+import redis
+import os
+import time
+from dotenv import load_dotenv
+from utils.Logging import info
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+class TweetSummaryEnricher():
+    def __init__(self, sources):
+        self.sources = sources
+        self.embedding_model = "text-embedding-ada-002"
+        self.last_request_time = None  # error_code=None error_message='Rate limit reached for default-global-with-image-limits in organization org-mJUMNPeqLz41mk3VvrEAqOMV on requests per min. Limit: 60 / min. Please try again in 1s. Contact support@openai.com if you continue to have issues. Please add a payment method to your account to increase your rate limit. Visit https://platform.openai.com/account/billing to add a payment method.' error_param=None error_type=requests message='OpenAI API error received' stream_error=False
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+    def find_most_similar_url_uisng_spacy(self, target_sentence):
+        nlp = spacy.load("en_core_web_md")
+        # tokenize the target sentence
+        doc1 = nlp(target_sentence)
+        best_score = 0
+        best_match = ""
+        # tokenize the sentences in each source
+        for source in self.sources:
+            doc2 = nlp(source)
+            similarity = doc1.similarity(doc2)
+            if similarity > best_score:
+                best_score = similarity
+                best_match = source
+        return best_match
+
+    def find_most_similar_url_uisng_openai_embedding(self, target_sentence):
+        target_embedding = get_embedding(
+            target_sentence, engine=self.embedding_model)
+        best_score = 0
+        best_match = ""
+        for source in self.sources:
+            source_embedding = self.get_text_embedding(source)
+            similarity = np.dot(source_embedding, target_embedding)
+            if similarity > best_score:
+                best_score = similarity
+                best_match = source
+        return best_match
+
+    def get_text_embedding(self, text):
+        first_100_char_of_text_as_cache_key = text[:100]
+        if not self.redis_client.get(first_100_char_of_text_as_cache_key):
+            if self.last_request_time is not None:
+                time_elapsed = time.time() - self.last_request_time
+                if time_elapsed < 1:
+                    time.sleep(1 - time_elapsed)
+            info(f"{first_100_char_of_text_as_cache_key} cache miss")
+            embedding = get_embedding(text, engine=self.embedding_model)
+            self.last_request_time = time.time()
+            self.redis_client.set(
+                first_100_char_of_text_as_cache_key, json.dumps(embedding))
+            info(f"{first_100_char_of_text_as_cache_key} cached")
+        return json.loads(self.redis_client.get(first_100_char_of_text_as_cache_key))

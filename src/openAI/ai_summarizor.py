@@ -1,14 +1,11 @@
 from openai.error import APIError, InvalidRequestError, OpenAIError
 from utils.Utilities import SUM_TWEET_FILE_PREFIX
 from utils.Logging import info
-from utils.Utilities import TwitterTopic
 from dotenv import load_dotenv
 import openai
 import time
 import os
-import json
 import nltk
-# nltk.download('punkt')
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -19,10 +16,12 @@ OPEN_AI_TOKEN_SIZE_LIMIT_BUFFER_PERCENT = 0.8
 def gpt3_5_tweets_summarize(tweets, topic: str, num_retries: int = 3):
     tweets_by_line = '\n'.join(tweets)
     normalized_topic = topic.replace("_", " ")
-    system_setup_prompt = f"As an AI, your task is to analyze tweets related to {normalized_topic}. Your specific tasks are following:\
-        1. Extract valuable information from tweets while disregarding referral program posts and queries\
-        2. Summarize the information gathered from tweets into bullet point news-style format, avoiding any references to Twitter as the data source\
-        3. Prioritize tweets related to government regulations and official announcements made by authoritative sources\
+    system_setup_prompt = f"As an tweet analyzer, your specific tasks are following:\
+        1. Filter out tweets unrelated to {normalized_topic} \
+        1. Filter out promotional tweets, questions and tweets with 5 or less words \
+        2. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
+        3. Combine similar tweets and extract valuable information into bullet point news-style format \
+        4. Pick 10 most informational summary points \
         The tweets are in a single line format and always start with the author name and their number of followers. \
         Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
 
@@ -70,7 +69,7 @@ def gpt3_5_combine_hourly_summary(summaries, topic: str, num_retries: int = 3):
                 news_groups.append(news_group_growing)
                 news_group_growing = ''
     news_groups.append(news_group_growing)
-    info(f'{len(summaries)} summaries are grouped into {len(news_groups)} chuncks for further summarization')
+    info(f'{len(summaries)} {topic} summaries are grouped into {len(news_groups)} chuncks for further summarization')
     further_summaries = []
     for news_group in news_groups:
         normalized_topic = topic.replace("_", " ")
@@ -78,11 +77,20 @@ def gpt3_5_combine_hourly_summary(summaries, topic: str, num_retries: int = 3):
             if i == num_retries:
                 raise ValueError("Exceeded maximum number of retries")
             try:
+                system_setup_prompt = f"As a news analyzer, your specific tasks are following:\
+                    1. Filter out news unrelated to {normalized_topic} \
+                    2. Prioritize news about government regulations \
+                    3. Prioritize official announcements made by authoritative sources \
+                    4. Prioritize news with valuable information \
+                    5. Combine similar news and extract valuable information into bullet point news-style summaries \
+                    6. Pick top 10 summaries \
+                    Please be aware that you will received one news per line "
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
+                        {"role": "system", "content": system_setup_prompt},
                         {"role": "user",
-                            "content": f"Summarize following {normalized_topic} news into a bullet point style daily news report. You should combine duplicate news. You should prioritize news related to authoritative entities, celebraties and governments. You should not drop data or entity names from news.\n{news_group}"}
+                            "content": f"Summarize following {normalized_topic} news\n{news_group}"}
                     ],
                     temperature=1,
                     n=1,

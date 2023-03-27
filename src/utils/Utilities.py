@@ -1,9 +1,12 @@
 from enum import Enum
 import datetime
+import re
 
 RAW_TWEET_FILE_PREFIX = 'raw_'
 CLEAN_TWEET_FILE_PREFIX = 'clean_'
 SUM_TWEET_FILE_PREFIX = 'sum_'
+DAILY_SUM_TWEET_FILE_PREFIX = 'daily_sum_'
+DAILY_SUM_ENRICHED_TWEET_FILE_NAME = 'daily_sum_enriched'
 
 
 class TwitterTopic(Enum):
@@ -29,3 +32,10 @@ def get_current_date():
 
 def get_date(time):
     return time.strftime("%Y%m%d")
+
+
+def get_clean_tweet_text(raw_text):
+    new_line_free_text = raw_text.replace('\n', ' ')
+    link_free_text = re.sub(r'http\S+', '', new_line_free_text)
+    link_free_clean_text = re.sub(' +', ' ', link_free_text)
+    return link_free_clean_text

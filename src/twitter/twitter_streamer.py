@@ -60,6 +60,12 @@ class TwitterFilteredStreamer:
         while attempts < max_attempts:
             response = requests.get(
                 self.stream_url, headers=headers, stream=True, timeout=300)
+            if response.status_code == 429:
+                info(
+                    f"Too Many Requests. {response.status_code} {response.reason}.")
+                attempts += 1
+                # sleep 15 mins due to 429 Too Many Requests.
+                time.sleep(15*60)
             if response.status_code != 200:
                 info(
                     f"Failed to connect to stream: {response.status_code} {response.reason}.")
@@ -77,7 +83,10 @@ class TwitterFilteredStreamer:
                                     data['data'], matching_rule_tag)
                         except json.JSONDecodeError as e:
                             info(
-                                f"Failed to load json due to json.JSONDecodeError.")
+                                f"Failed to load json due to json.JSONDecodeError. {line}")
+                        except KeyError:
+                            info(
+                                f"Failed to load json due to KeyError. {line}")
                 except (requests.exceptions.ConnectionError):
                     info(
                         f'Retrying in {retry_delay} seconds due to ConnectionError')

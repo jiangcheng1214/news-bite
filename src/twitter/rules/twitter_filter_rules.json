@@ -1,6 +1,6 @@
 [
     {
-        "value": "(bitcoin OR btc OR #bitcoin OR #btc OR eth2 OR ethereum2 OR ethereum OR eth OR #ethereum OR #ethereum2 OR #eth OR #eth2 OR crypto OR \"crypto currency\" OR \"block chain\" OR blockchain OR #crypto OR #cryptocurrency OR #blockchain) -#airdrop -#airdrops -#giveaway -#giveaways -airdrop -giveaway -retweet -\"like or retweet\" -\"retweet or like\" -\"retweet this\" -\"rt/like\" -\"like/rt\" -\"follow me\" -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:100000",
+        "value": "(bitcoin OR btc OR #bitcoin OR #btc OR eth2 OR ethereum2 OR ethereum OR eth OR #ethereum OR #ethereum2 OR #eth OR #eth2 OR crypto OR \"crypto currency\" OR \"block chain\" OR blockchain OR #crypto OR #cryptocurrency OR #blockchain) -#airdrop -#airdrops -#giveaway -#giveaways -airdrop -giveaway -retweet -\"like or retweet\" -\"retweet or like\" -\"retweet this\" -\"rt/like\" -\"like/rt\" -\"follow me\" -\"give away\" -\"sign up\" -\"for free\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:100000",
         "tag": "crypto_currency"
     },
     {

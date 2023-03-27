@@ -1,11 +1,11 @@
 import datetime
 import os
 from utils.Utilities import TwitterTopic
-from utils.TimedTweetDataProcessor import TweetDataProcessor
+from TweetSummarizer import TweetSummarizer
 from utils.Logging import info
 import time
 
-tweet_processor_by_topic = {topic.value: TweetDataProcessor(os.path.join(os.path.dirname(
+tweet_processor_by_topic = {topic.value: TweetSummarizer(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets'), topic.value)
     for topic in TwitterTopic}
 
