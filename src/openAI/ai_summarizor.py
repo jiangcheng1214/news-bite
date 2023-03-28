@@ -18,10 +18,10 @@ def gpt3_5_tweets_summarize(tweets, topic: str, num_retries: int = 3):
     normalized_topic = topic.replace("_", " ")
     system_setup_prompt = f"As an tweet analyzer, your specific tasks are following:\
         1. Filter out tweets unrelated to {normalized_topic} \
-        1. Filter out promotional tweets, questions and tweets with 5 or less words \
-        2. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
+        2. Filter out promotional tweets, questions and tweets with 5 or less words \
         3. Combine similar tweets and extract valuable information into bullet point news-style format \
-        4. Pick 10 most informational summary points \
+        4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
+        5. Return top 10 most informational news beginning we item number \
         The tweets are in a single line format and always start with the author name and their number of followers. \
         Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
 
