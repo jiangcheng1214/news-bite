@@ -5,6 +5,11 @@ from TweetSummarizer import TweetSummarizer
 from utils.Logging import info
 import time
 
+"""
+This script is used to generate hourly tweet summary
+usage: python start_twitter_summary_generation.py
+"""
+
 tweet_processor_by_topic = {topic.value: TweetSummarizer(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets'), topic.value)
     for topic in TwitterTopic}

@@ -6,8 +6,15 @@ from openAI.ai_summarizor import gpt3_5_combine_hourly_summary
 
 from utils.Utilities import SUM_TWEET_FILE_PREFIX, TwitterTopic, DAILY_SUM_TWEET_FILE_PREFIX
 
+"""
+This script is used to aggregate HOURLY tweet summary and generate DAILY tweet summary.
+usage: python daily_summary.py
+"""
 
-SUMMRAY_DATE = '20230326'
+# e.g '20230326'
+SUMMRAY_DATE = ''
+
+assert (len(SUMMRAY_DATE) == 8, "SUMMRAY_DATE must be in format of 'YYYYMMDD'")
 
 summary_folder_by_topic = {topic.value: (os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', topic.value, SUMMRAY_DATE))

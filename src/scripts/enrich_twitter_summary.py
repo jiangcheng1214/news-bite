@@ -4,7 +4,15 @@ from utils.TweetSummaryEnricher import TweetSummaryEnricher
 import json
 from utils.Logging import info
 
-SUMMRAY_DATE = '20230326'
+"""
+This script is used to enrich DAILY tweet summary with more information including original tweet, tweet url, source url, etc.
+usage: python enrich_twitter_summary.py
+"""
+
+# e.g '20230326'
+SUMMRAY_DATE = ''
+
+assert (len(SUMMRAY_DATE) == 8, "SUMMRAY_DATE must be in format of 'YYYYMMDD'")
 
 summary_folder_by_topic = {topic.value: (os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', topic.value, SUMMRAY_DATE))
