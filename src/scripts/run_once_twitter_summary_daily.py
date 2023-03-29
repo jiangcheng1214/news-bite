@@ -2,7 +2,7 @@
 import json
 import os
 from utils.Logging import info
-from openAI.ai_summarizor import gpt3_5_combine_hourly_summary
+from openAI.OpenaiGpt35ApiManager import OpenaiGpt35ApiManager
 
 from utils.Utilities import SUM_TWEET_FILE_PREFIX, TwitterTopic, DAILY_SUM_TWEET_FILE_PREFIX
 
@@ -12,13 +12,15 @@ usage: python daily_summary.py
 """
 
 # e.g '20230326'
-SUMMRAY_DATE = ''
+SUMMRAY_DATE = '20230328'
 
 assert (len(SUMMRAY_DATE) == 8, "SUMMRAY_DATE must be in format of 'YYYYMMDD'")
 
 summary_folder_by_topic = {topic.value: (os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', topic.value, SUMMRAY_DATE))
     for topic in TwitterTopic}
+
+openai_gpt35_api_manager = OpenaiGpt35ApiManager()
 
 for topic in summary_folder_by_topic.keys():
     dir_path = summary_folder_by_topic[topic]
@@ -28,10 +30,10 @@ for topic in summary_folder_by_topic.keys():
             lines = open(os.path.join(dir_path, file_name), 'r').readlines()
             for line in lines:
                 summary_json = json.loads(line)
-                summaries.append(
-                    summary_json['choices'][0]['message']['content'])
+                summaries.append(summary_json['text'])
 
-    responses = gpt3_5_combine_hourly_summary(summaries, topic)
+    responses = openai_gpt35_api_manager.gpt3_5_combine_hourly_summary(
+        summaries, topic)
     for i in range(len(responses)):
         daily_summary_file_path = os.path.join(
             dir_path, f'{DAILY_SUM_TWEET_FILE_PREFIX}{i}')

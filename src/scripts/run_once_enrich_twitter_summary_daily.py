@@ -10,7 +10,7 @@ usage: python enrich_twitter_summary.py
 """
 
 # e.g '20230326'
-SUMMRAY_DATE = ''
+SUMMRAY_DATE = '20230328'
 
 assert (len(SUMMRAY_DATE) == 8, "SUMMRAY_DATE must be in format of 'YYYYMMDD'")
 
@@ -40,7 +40,7 @@ for topic in summary_folder_by_topic.keys():
         elif file_name.startswith(DAILY_SUM_TWEET_FILE_PREFIX):
             for line in open(os.path.join(summary_folder, file_name)).readlines():
                 json_data = json.loads(line)
-                for summary in json_data["choices"][0]["message"]["content"].split('\n'):
+                for summary in json_data["text"].split('\n'):
                     summary_list.append(summary)
 
     tagger = TweetSummaryEnricher(list(text_to_tweet.keys()))

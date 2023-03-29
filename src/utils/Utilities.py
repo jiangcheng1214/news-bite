@@ -15,6 +15,13 @@ class TwitterTopic(Enum):
     CRYPTO_CURRENCY = 'crypto_currency'
 
 
+class OpenaiFinishReason(Enum):
+    STOP = 'stop'
+    LENGTH = 'length'
+    CONTENT_FILTER = 'content_filter'
+    NULL = 'null'
+
+
 def get_current_minute():
     now = datetime.datetime.now()
     return now.minute

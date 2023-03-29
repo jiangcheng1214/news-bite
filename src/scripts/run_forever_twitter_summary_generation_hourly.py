@@ -1,7 +1,7 @@
 import datetime
 import os
 from utils.Utilities import TwitterTopic
-from TweetSummarizer import TweetSummarizer
+from utils.TweetSummarizer import TweetSummarizer
 from utils.Logging import info
 import time
 
@@ -16,7 +16,7 @@ tweet_processor_by_topic = {topic.value: TweetSummarizer(os.path.join(os.path.di
 
 while True:
     for tweet_processor in tweet_processor_by_topic.values():
-        tweet_processor.summarize_tweets_if_necessary(False)
+        tweet_processor.summarize_hourly_tweets_if_necessary(False)
     now = datetime.datetime.now()
     next_hour = (now + datetime.timedelta(hours=1)
                  ).replace(minute=0, second=0, microsecond=0)

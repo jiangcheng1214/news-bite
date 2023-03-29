@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import requests
 
 
-from twitter.twitter_filter_rules_manager import TwitterFilterRulesManager
+from TwitterFilterRulesManager import TwitterFilterRulesManager
 
 
 class TweetStreamData:

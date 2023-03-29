@@ -1,8 +1,7 @@
 import json
 import os
-import re
 from datetime import datetime, timedelta
-from openAI.ai_summarizor import gpt3_5_tweets_summarize
+from openAI.OpenaiGpt35ApiManager import OpenaiGpt35ApiManager
 from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, CLEAN_TWEET_FILE_PREFIX, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text
 from utils.Logging import info
 
@@ -13,16 +12,18 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         self.running = False
+        self.openaiApiManager = OpenaiGpt35ApiManager()
 
-    def summarize_tweets_if_necessary(self, back_fill: bool = False):
+    def summarize_hourly_tweets_if_necessary(self, back_fill: bool = False):
         date = get_date(datetime.now())
-        file_paths = self._get_files_to_process_for_date(date, back_fill)
+        file_paths = self._get_houly_raw_files_to_process_for_date(
+            date, back_fill)
         if (len(file_paths) > 0):
             info(
                 f'tweet processor started ({self.topic}). backfill={back_fill}')
-            self._process_files(file_paths)
+            self._process_hourly_raw_files(file_paths)
 
-    def _get_files_to_process_for_date(self, date, back_fill=False):
+    def _get_houly_raw_files_to_process_for_date(self, date, back_fill=False):
         hour_ago = datetime.now() - timedelta(hours=1)
         daily_data_folder = os.path.join(self.master_folder, self.topic, date)
         if not os.path.exists(daily_data_folder):
@@ -39,7 +40,7 @@ class TweetSummarizer:
                         os.path.join(daily_data_folder, file_name))
         return files_to_process
 
-    def _process_files(self, file_paths):
+    def _process_hourly_raw_files(self, file_paths):
         for file_path in file_paths:
             info(f'start cleaning {file_path}')
             raw_tweets = open(file_path, 'r').readlines()
@@ -77,9 +78,9 @@ class TweetSummarizer:
             for batch_num in range(num_batches):
                 start_idx = batch_num * batch_size
                 end_idx = min((batch_num + 1) * batch_size, num_lines)
-                batch_tweets = clean_tweets[start_idx:end_idx]
-                process_result = gpt3_5_tweets_summarize(
-                    batch_tweets, self.topic)
+                batch_clean_tweets = clean_tweets[start_idx:end_idx]
+                process_result = self.openaiApiManager.gpt3_5_tweets_summarize(
+                    batch_clean_tweets, self.topic)
                 with open(summary_file_path, 'a') as f:
                     f.write(json.dumps(process_result))
                     f.write('\n')

@@ -14,5 +14,5 @@ tweet_processor_by_topic = {topic.value: TweetSummarizer(os.path.join(os.path.di
     for topic in TwitterTopic}
 
 for tweet_processor in tweet_processor_by_topic.values():
-    tweet_processor.summarize_tweets_if_necessary(True)
+    tweet_processor.summarize_hourly_tweets_if_necessary(True)
 info(f"Back fill tweet summary finished")
