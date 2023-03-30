@@ -37,8 +37,8 @@ class TweetSummaryEnricher():
             if self.last_request_time is not None:
                 time_elapsed = time.time() - self.last_request_time
                 if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
-                    time.sleep(1 - time_elapsed)
-            info(f"{first_100_char_of_text_as_cache_key} cache miss")
+                    time.sleep(
+                        MINIMAL_OPENAI_API_CALL_INTERVAL_SEC - time_elapsed)
             embedding = self.openaiApiManager.get_embedding(text)
             self.last_request_time = time.time()
             self.redis_client.set(

@@ -3,8 +3,8 @@ import os
 from dotenv import load_dotenv
 from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
-from TwitterFilteredStreamer import TwitterFilteredStreamer
-from TwitterUserLooker import TwitterUserLooker
+from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
+from twitter.TwitterUserLooker import TwitterUserLooker
 from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX
 
 """

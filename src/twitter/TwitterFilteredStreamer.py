@@ -3,11 +3,8 @@ import time
 from utils.Logging import info
 from typing import Dict
 from urllib.parse import urlencode
-from dotenv import load_dotenv
 import requests
-
-
-from TwitterFilterRulesManager import TwitterFilterRulesManager
+from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
 
 
 class TweetStreamData:
@@ -66,12 +63,13 @@ class TwitterFilteredStreamer:
                 attempts += 1
                 # sleep 15 mins due to 429 Too Many Requests.
                 time.sleep(15*60)
-            if response.status_code != 200:
+            elif response.status_code != 200:
                 info(
                     f"Failed to connect to stream: {response.status_code} {response.reason}.")
                 attempts += 1
                 time.sleep(retry_delay)
             else:
+                attempts = 0
                 try:
                     for line in response.iter_lines():
                         if not line:

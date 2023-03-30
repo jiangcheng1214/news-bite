@@ -136,27 +136,27 @@ class OpenaiGpt35ApiManager():
         topic (str): topic of the tweets. example: 'financial'
     """
 
-    def gpt3_5_combine_hourly_summary(self, summaries, topic: str, num_retries: int = 3):
+    def gpt3_5_combined_hourly_summary_generator(self, hourly_summary_text_list, topic: str):
         news_groups = []
         news_group_growing = ''
-        for summary in summaries:
-            for news in summary.split('\n'):
-                if not news:
+        for hourly_summary_text in hourly_summary_text_list:
+            for news_text in hourly_summary_text.split('\n'):
+                if not news_text:
                     continue
-                news_tokenized = nltk.word_tokenize(news)
+                news_tokenized = nltk.word_tokenize(news_text)
                 news_token_count = len(news_tokenized)
                 news_group_tokenized = nltk.word_tokenize(
                     news_group_growing)
                 news_group_token_count = len(news_group_tokenized)
                 if news_group_token_count + news_token_count < OPEN_AI_TOKEN_SIZE_LIMIT * OPEN_AI_TOKEN_SIZE_LIMIT_BUFFER_PERCENT:
-                    news_group_growing += news
+                    news_group_growing += news_text
                     news_group_growing += '\n'
                 else:
                     news_groups.append(news_group_growing)
                     news_group_growing = ''
         news_groups.append(news_group_growing)
-        info(f'{len(summaries)} {topic} summaries are grouped into {len(news_groups)} chuncks for further summarization')
-        further_summaries = []
+        info(f'{len(hourly_summary_text_list)} {topic} summaries are grouped into {len(news_groups)} chuncks for further summarization')
+        # further_summaries = []
         for n in range(len(news_groups)):
             news_group = news_groups[n]
             info(
@@ -178,8 +178,9 @@ class OpenaiGpt35ApiManager():
                 else:
                     info(f"OpenAI API Error: Retrying {i+1} out of 3")
                     time.sleep(10)
-            further_summaries.append(response)
-        return further_summaries
+            yield response
+        #     further_summaries.append(response)
+        # return further_summaries
 
     def get_embedding(self, text: str):
         return get_embedding(text, self.embedding_model)
