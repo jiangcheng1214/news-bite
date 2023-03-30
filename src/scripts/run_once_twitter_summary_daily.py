@@ -29,8 +29,11 @@ for topic in summary_folder_by_topic.keys():
         if file_name.startswith(SUM_TWEET_FILE_PREFIX):
             lines = open(os.path.join(dir_path, file_name), 'r').readlines()
             for line in lines:
-                summary_json = json.loads(line)
-                summaries.append(summary_json['text'])
+                try:
+                    summary_json = json.loads(line)
+                    summaries.append(summary_json['text'])
+                except json.decoder.JSONDecodeError:
+                    info(f"json.decoder.JSONDecodeError: {line}")
 
     responses = openai_gpt35_api_manager.gpt3_5_combine_hourly_summary(
         summaries, topic)

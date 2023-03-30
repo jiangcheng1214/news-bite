@@ -5,6 +5,7 @@ import redis
 import os
 import time
 from dotenv import load_dotenv
+from utils.Utilities import MINIMAL_OPENAI_API_CALL_INTERVAL_SEC
 from utils.Logging import info
 from openAI.OpenaiGpt35ApiManager import OpenaiGpt35ApiManager
 load_dotenv()
@@ -35,7 +36,7 @@ class TweetSummaryEnricher():
         if not self.redis_client.get(first_100_char_of_text_as_cache_key):
             if self.last_request_time is not None:
                 time_elapsed = time.time() - self.last_request_time
-                if time_elapsed < 1:
+                if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
                     time.sleep(1 - time_elapsed)
             info(f"{first_100_char_of_text_as_cache_key} cache miss")
             embedding = self.openaiApiManager.get_embedding(text)

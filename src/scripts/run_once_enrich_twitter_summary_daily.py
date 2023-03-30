@@ -2,7 +2,7 @@ import os
 from utils.Utilities import RAW_TWEET_FILE_PREFIX, DAILY_SUM_TWEET_FILE_PREFIX, DAILY_SUM_ENRICHED_TWEET_FILE_NAME, get_clean_tweet_text, TwitterTopic
 from utils.TweetSummaryEnricher import TweetSummaryEnricher
 import json
-from utils.Logging import info
+from utils.Logging import info, error
 
 """
 This script is used to enrich DAILY tweet summary with more information including original tweet, tweet url, source url, etc.
@@ -37,17 +37,24 @@ for topic in summary_folder_by_topic.keys():
                 source_url = f"https://twitter.com/{json_data['authorMetadata']['username']}/status/{json_data['tweet']['id']}"
                 text_to_tweet[clean_text] = {
                     "unwound_url": unwound_url, 'tweet_url': source_url}
-        elif file_name.startswith(DAILY_SUM_TWEET_FILE_PREFIX):
+        elif file_name.startswith(DAILY_SUM_TWEET_FILE_PREFIX) and not file_name.startswith(DAILY_SUM_ENRICHED_TWEET_FILE_NAME):
             for line in open(os.path.join(summary_folder, file_name)).readlines():
                 json_data = json.loads(line)
-                for summary in json_data["text"].split('\n'):
-                    summary_list.append(summary)
+                try:
+                    for summary in json_data["text"].split('\n'):
+                        summary_list.append(summary)
+                except KeyError:
+                    error(f"KeyError {line}")
+                    exit(1)
 
     tagger = TweetSummaryEnricher(list(text_to_tweet.keys()))
 
     info(f"start enriching {len(summary_list)} summaries")
     enriched_summary_list = []
     for summary in summary_list:
+        if len(summary) < 20:
+            info(f'{summary} is ignored')
+            continue
         info(f"enriching {summary}")
         source_text = tagger.find_most_similar_url_uisng_openai_embedding(
             summary)

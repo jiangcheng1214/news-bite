@@ -8,6 +8,8 @@ SUM_TWEET_FILE_PREFIX = 'sum_'
 DAILY_SUM_TWEET_FILE_PREFIX = 'daily_sum_'
 DAILY_SUM_ENRICHED_TWEET_FILE_NAME = 'daily_sum_enriched'
 
+MINIMAL_OPENAI_API_CALL_INTERVAL_SEC = 0.2
+
 
 class TwitterTopic(Enum):
     FINANCIAL = 'financial'

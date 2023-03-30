@@ -162,36 +162,23 @@ class OpenaiGpt35ApiManager():
             info(
                 f"Summarizing {topic} news, batch {n+1}/{len(news_groups)}")
             normalized_topic = topic.replace("_", " ")
-            for i in range(num_retries+1):
-                if i == num_retries:
-                    raise ValueError("Exceeded maximum number of retries")
-                try:
-                    system_setup_prompt = f"As an hourly news summarizer, your specific tasks are following:\
+            system_setup_prompt = f"As an hourly news summarizer, your specific tasks are following:\
                         1. Filter out tweets unrelated to {normalized_topic} \
                         2. Filter out promotional tweets, questions and tweets with 5 or less words \
                         3. Combine similar tweets and extract valuable information into bullet point news-style format \
                         4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
                         The tweets are in a single line format and always start with the author name and their number of followers. \
                         Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
-                    user_prompt = f"Generate a {normalized_topic} news summary with 20 bullet points based on following news:\n{news_group}"
-                    for i in range(3):
-                        response = self._gpt3_5_get_complete_response(
-                            system_setup_prompt, user_prompt)
-                        if response is not None:
-                            break
-                        else:
-                            info(f"OpenAI API Error: Retrying {i+1} out of 3")
-                            time.sleep(10)
-                    further_summaries.append(response)
-                except APIError as e:
-                    info(f"Error occurred: {e}")
+            user_prompt = f"Generate a {normalized_topic} news summary with 20 bullet points based on following news:\n{news_group}"
+            for i in range(3):
+                response = self._gpt3_5_get_complete_response(
+                    system_setup_prompt, user_prompt)
+                if response is not None:
+                    break
+                else:
+                    info(f"OpenAI API Error: Retrying {i+1} out of 3")
                     time.sleep(10)
-                except InvalidRequestError as e:
-                    info(f"Error occurred: {e}")
-                    time.sleep(10)
-                except OpenAIError as e:
-                    info(f"Error occurred: {e}")
-                    time.sleep(10)
+            further_summaries.append(response)
         return further_summaries
 
     def get_embedding(self, text: str):
