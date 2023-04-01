@@ -95,4 +95,9 @@ class TwitterFilteredStreamer:
                     info(
                         f'Retrying in {retry_delay} seconds due to TimeoutError')
                     time.sleep(retry_delay)
+                except (requests.exceptions.ChunkedEncodingError):
+                    attempts += 1
+                    info(
+                        f'Retrying in {retry_delay} seconds due to ChunkedEncodingError')
+                    time.sleep(retry_delay)
         info('Max attempt hit')

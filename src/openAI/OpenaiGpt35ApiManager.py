@@ -29,10 +29,15 @@ class OpenaiGpt35ApiManager():
             total_tokens = 0
             completion_tokens = 0
             turns = 0
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
+            if system_prompt:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            else:
+                messages = [
+                    {"role": "user", "content": user_prompt}
+                ]
             while finish_reason != OpenaiFinishReason.STOP.value and turns < 3:
                 response = self.API.ChatCompletion.create(
                     model=self.gpt3_5_model_name,
@@ -179,94 +184,36 @@ class OpenaiGpt35ApiManager():
                     info(f"OpenAI API Error: Retrying {i+1} out of 3")
                     time.sleep(10)
             yield response
-        #     further_summaries.append(response)
-        # return further_summaries
+
+    # WIP
+    def gpt3_5_filter_unrelated_tweets(self, tweets, topic: str):
+        tweets_by_line = '\n'.join(tweets)
+        normalized_topic = topic.replace("_", " ")
+        user_prompt = f"As a twitter filter, please extract {normalized_topic} news from following tweets. You need to drop unrelated ones and return the rest without changing format.\n\n{tweets_by_line}"
+        for i in range(3):
+            response = self._gpt3_5_get_complete_response(
+                None, user_prompt)
+            if response is not None:
+                break
+            else:
+                info(f"OpenAI API Error: Retrying {i+1} out of 3")
+                time.sleep(10)
+        return response
 
     def get_embedding(self, text: str):
         return get_embedding(text, self.embedding_model)
 
-    # def gpt3_5_get_complete_response(system_prompt: str, user_prompt: str):
-    #     try:
-    #         finish_reason = 'null'
-    #         text = ''
-    #         prompt_tokens = 0
-    #         total_tokens = 0
-    #         completion_tokens = 0
-    #         turns = 0
-    #         messages = [
-    #             {"role": "system", "content": system_prompt},
-    #             {"role": "user", "content": user_prompt}
-    #         ]
-    #         while finish_reason != OpenaiFinishReason.STOP.value and turns < 3:
-    #             response = openai.ChatCompletion.create(
-    #                 model="gpt-3.5-turbo",
-    #                 messages=messages,
-    #                 temperature=1,
-    #                 n=1,
-    #                 presence_penalty=0,
-    #                 frequency_penalty=0
-    #             )
-    #             finish_reason = response['choices'][0]['finish_reason']
-    #             text += response['choices'][0]['message']['content']
-    #             text += '\n'
-    #             prompt_tokens += response['usage']['prompt_tokens']
-    #             total_tokens += response['usage']['total_tokens']
-    #             completion_tokens += response['usage']['completion_tokens']
-    #             messages = [
-    #                 {"role": "user", "content": user_prompt},
-    #                 response['choices'][0]['message'],
-    #                 {"role": "user", "content": 'continue'},
-    #             ]
-    #             turns += 1
-    #             if finish_reason == OpenaiFinishReason.LENGTH.value:
-    #                 warn('OpenAI response is too long, will request for more')
-    #         if finish_reason != OpenaiFinishReason.STOP.value:
-    #             info("OpenAI did not stop but reached the turn limit")
-    #         return {'usage': {'prompt_tokens': prompt_tokens, 'total_tokens': total_tokens, 'completion_tokens': completion_tokens}, 'text': text.strip(), 'finish_reason': finish_reason, 'turns': turns}
-    #     except APIError as e:
-    #         info(f"Error occurred: {e}")
-    #         time.sleep(10)
-    #     except InvalidRequestError as e:
-    #         info(f"Error occurred: {e}")
-    #         time.sleep(10)
-    #     except OpenAIError as e:
-    #         info(f"Error occurred: {e}")
-    #         time.sleep(10)
-
-    # def gpt3_5_tweets_summarize(tweets, topic: str, num_retries: int = 3):
-    #     tweets_by_line = '\n'.join(tweets)
-    #     normalized_topic = topic.replace("_", " ")
-    #     system_setup_prompt = f"As an tweet analyzer, your specific tasks are following:\
-    #         1. Filter out tweets unrelated to {normalized_topic} \
-    #         2. Filter out promotional tweets, questions and tweets with 5 or less words \
-    #         3. Combine similar tweets and extract valuable information into bullet point news-style format \
-    #         4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
-    #         The tweets are in a single line format and always start with the author name and their number of followers. \
-    #         Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
-
-    #     for i in range(num_retries):
-    #         try:
-    #             response = gpt3_5_get_complete_response(
-    #                 system_setup_prompt, f"Summarize these tweets into 10 most important bullet points:\n{tweets_by_line}")
-    #             return response
-    #         except APIError as e:
-    #             info(f"Error occurred: {e}")
-    #             time.sleep(10)
-    #         except InvalidRequestError as e:
-    #             info(f"Error occurred: {e}")
-    #             time.sleep(10)
-    #         except OpenAIError as e:
-    #             info(f"Error occurred: {e}")
-    #             time.sleep(10)
-    #     raise ValueError("Exceeded maximum number of retries")
-
 
 if __name__ == "__main__":
     # test_gpt3_5_get_complete_response()
-    openaiApiManager = OpenaiGpt35ApiManager()
-    tweets = open(os.path.join(os.path.dirname(__file__),
-                  'clean_tweets_example.jsons'), 'r').readlines()
-    info(openaiApiManager.gpt3_5_tweets_summarize(
-        tweets, TwitterTopic.CRYPTO_CURRENCY.value))
+    # openaiApiManager = OpenaiGpt35ApiManager()
+    # tweets = open(os.path.join(os.path.dirname(__file__),
+    #               'clean_tweets_example.jsons'), 'r').readlines()
+    # info(openaiApiManager.gpt3_5_tweets_summarize(
+    #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
 
+    # tweets = open(os.path.join(os.path.dirname(__file__),
+    #               'clean_tweets_example.jsons'), 'r').readlines()
+    # info(openaiApiManager.gpt3_5_filter_unrelated_tweets(
+    #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
     pass
