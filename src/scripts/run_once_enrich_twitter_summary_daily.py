@@ -12,8 +12,9 @@ usage: python enrich_twitter_summary.py
 
 explicit_date_from_user = sys.argv[1] if len(sys.argv) > 1 else None
 if explicit_date_from_user:
-    assert (len(explicit_date_from_user) == 8,
-            "explicit_date_from_user must be in format of 'YYYYMMDD'")
+    if len(explicit_date_from_user) != 8:
+        error(f"explicit_date_from_user must be in format of 'YYYYMMDD'")
+        sys.exit(1)
     SUMMRAY_DATE = explicit_date_from_user
 else:
     SUMMRAY_DATE = get_yesterday_date()
