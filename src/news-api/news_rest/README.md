@@ -28,10 +28,15 @@ python manage.py runserver
 ### Prerequisites
 
 Python 3.10+
+
 Mysql 5.8+ server
+
 Redis 4.0+
+
 Rabbitmq server latest
+
 Nginx(To Do)
+
 Monitor(To Do)
 
 ### Installation
@@ -43,15 +48,25 @@ pip install -r requirements.txt
 
 Command:
 cd /path/to/backend
+
 [获取新闻数据]
+
 python manage.py get_news_list
+
 [启动 News Consume]
+
 python manage.py news_consumer
+
 [crontab]
+
 python manage.py crontab --help
+
 python manage.py crontab add
+
 python manage.py crontab show
+
 python manage.py crontab remove
+
 ....
 
 ## Contributing
