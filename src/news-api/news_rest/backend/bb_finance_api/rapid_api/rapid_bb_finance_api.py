@@ -3,6 +3,9 @@ import json
 import logging
 
 class RapidBBFinanceAPI:
+
+    
+
     def __init__(self, api_key):
         self.api_key = api_key
         self.host = "bloomberg-market-and-financial-news.p.rapidapi.com"
@@ -19,8 +22,6 @@ class RapidBBFinanceAPI:
             return json.loads(response.text)
         else:
             return response.status_code
-
-        self.logger.debug(f"Response from {url}: {response.text}")
 
     def get_news_list(self, id):
         url = f"{self.base_url}/news/list"

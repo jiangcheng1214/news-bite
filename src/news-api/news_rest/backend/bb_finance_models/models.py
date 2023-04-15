@@ -352,8 +352,6 @@ class BBFinanceStoriesDetail:
         card = from_str(obj.get("card"))
         content_tags = from_list(ContentTag.from_dict, obj.get("contentTags"))
         disable_ads = from_bool(obj.get("disableAds"))
-        print(111)
-        sys.exit(1)
         follow_author_details = FollowAuthorDetails.from_dict(obj.get("followAuthorDetails"))
         id = from_str(obj.get("id"))
         internal_id = from_str(obj.get("internalID"))
