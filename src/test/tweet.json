@@ -1,0 +1,85 @@
+{
+    "tweet": {
+      "author_id": "1388092340225527811",
+      "created_at": "2023-03-30T07:00:00.000Z",
+      "edit_history_tweet_ids": [
+        "1641334445104922625"
+      ],
+      "entities": {
+        "hashtags": [
+          {
+            "start": 0,
+            "end": 12,
+            "tag": "XANAGenesis"
+          },
+          {
+            "start": 81,
+            "end": 84,
+            "tag": "AI"
+          },
+          {
+            "start": 193,
+            "end": 198,
+            "tag": "XANA"
+          },
+          {
+            "start": 199,
+            "end": 209,
+            "tag": "Metaverse"
+          },
+          {
+            "start": 210,
+            "end": 215,
+            "tag": "NFTs"
+          },
+          {
+            "start": 216,
+            "end": 225,
+            "tag": "NFTJapan"
+          },
+          {
+            "start": 226,
+            "end": 239,
+            "tag": "NFTCommunity"
+          }
+        ],
+        "urls": [
+          {
+            "start": 241,
+            "end": 264,
+            "url": "https://t.co/pJMZ6crCGt",
+            "expanded_url": "https://opensea.io/assets/ethereum/0x5b5cf41d9ec08d101ffeeeebda411677582c9448/1236",
+            "display_url": "opensea.io/assets/ethereu…"
+          },
+          {
+            "start": 265,
+            "end": 288,
+            "url": "https://t.co/ne9wNtzBBT",
+            "expanded_url": "https://twitter.com/XANAMetaverse/status/1641334445104922625/photo/1",
+            "display_url": "pic.twitter.com/ne9wNtzBBT",
+            "media_key": "3_1641312896964759553"
+          }
+        ]
+      },
+      "id": "1641334445104922625",
+      "lang": "en",
+      "text": "#XANAGenesis NFT #7691 (Katharine)\nHas traded at 0.4149 ETH🔥\n\nMeet this stunning #AI beauty \"Katharine\"🥰\n\n➡️Hair: Bob Sparkle Grey\n➡️Clothes: Tech Master Orange Gray\n➡️Eyes: Bright Sharp Blue\n\n#XANA #Metaverse #NFTs #NFTJapan #NFTCommunity \nhttps://t.co/pJMZ6crCGt https://t.co/ne9wNtzBBT"
+    },
+    "authorMetadata": {
+      "id": "1388092340225527811",
+      "name": "XANA",
+      "username": "XANAMetaverse",
+      "url": "https://t.co/7szQwX5vO1",
+      "description": "#Metaverse x #AI technology for billions of users. Adopted by major Institutions and global brands. | Founder : @Rio_Noborderz | DAO : https://t.co/0lmaIbdb6V",
+      "protected": false,
+      "verified": true,
+      "location": "Mobile / Desktop / VR",
+      "created_at": "2021-04-30T11:26:36.000Z",
+      "public_metrics": {
+        "followers_count": 231142,
+        "following_count": 20,
+        "tweet_count": 4433,
+        "listed_count": 317
+      }
+    }
+  }

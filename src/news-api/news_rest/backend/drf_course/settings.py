@@ -13,7 +13,16 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import sys
+
 load_dotenv()
+
+# Get the path of the 'src' directory
+src_directory = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', '..')
+
+# Add the 'src' directory to the Python module search path
+sys.path.append(src_directory)
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -104,6 +113,9 @@ DATABASES = {
         'PASSWORD': 'MyN3wP4ssw0rd',
         'HOST': '127.0.0.1',   # Or an IP Address that your DB is hosted on
         'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
     }
 }
 

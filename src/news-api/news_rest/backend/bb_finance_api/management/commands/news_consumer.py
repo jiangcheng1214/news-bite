@@ -4,7 +4,6 @@ import logging
 import time
 from MySQLdb import IntegrityError
 import pika
-import sys
 from django.core.management.base import BaseCommand
 import requests
 from bb_finance_api.factory.bb_finance_story_factory import BBFinanceStoryFactory
