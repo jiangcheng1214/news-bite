@@ -108,7 +108,7 @@ WSGI_APPLICATION = "drf_course.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql', 
-        'NAME': 'iam',
+        'NAME': 'news_bite',
         'USER': 'root',
         'PASSWORD': 'MyN3wP4ssw0rd',
         'HOST': '127.0.0.1',   # Or an IP Address that your DB is hosted on
