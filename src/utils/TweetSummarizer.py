@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime, timedelta
-from openAI.OpenaiGpt35ApiManager import OpenaiGpt35ApiManager
+from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
 from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, CLEAN_TWEET_FILE_PREFIX, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text
 from utils.Logging import info
 
@@ -12,7 +12,8 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         self.running = False
-        self.openaiApiManager = OpenaiGpt35ApiManager()
+        # self.openaiApiManager = OpenaiGpt35ApiManager()
+        self.openaiApiManager = OpenaiGpt4ApiManager()
 
     def summarize_hourly_tweets_if_necessary(self, back_fill: bool = False):
         date = get_date(datetime.now())
@@ -79,7 +80,7 @@ class TweetSummarizer:
                 start_idx = batch_num * batch_size
                 end_idx = min((batch_num + 1) * batch_size, num_lines)
                 batch_clean_tweets = clean_tweets[start_idx:end_idx]
-                process_result = self.openaiApiManager.gpt3_5_tweets_summarize(
+                process_result = self.openaiApiManager.summarize_tweets(
                     batch_clean_tweets, self.topic)
                 with open(summary_file_path, 'a') as f:
                     f.write(json.dumps(process_result))
