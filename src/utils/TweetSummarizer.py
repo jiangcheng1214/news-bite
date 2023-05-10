@@ -21,7 +21,7 @@ class TweetSummarizer:
             date, back_fill)
         if (len(file_paths) > 0):
             info(
-                f'tweet processor started ({self.topic}). backfill={back_fill}')
+                f'tweet processor started ({self.topic}). file_paths={file_paths} backfill={back_fill}')
             self._process_hourly_raw_files(file_paths)
 
     def _get_houly_raw_files_to_process_for_date(self, date, back_fill=False):
@@ -68,22 +68,31 @@ class TweetSummarizer:
             if os.path.exists(summary_file_path):
                 info(f"{summary_file_path} exists. Return.")
                 return
+            summarize_responses = self.openaiApiManager.summarize_tweets(
+                clean_tweets, self.topic)
+            if len(summarize_responses) == 0:
+                info(f"summarize_responses is empty. Return.")
+            else:
+                with open(summary_file_path, 'w') as f:
+                    for summarize_response in summarize_responses:
+                        f.write(json.dumps(summarize_response))
+                        f.write('\n')
+                info(f'summarizing finished. {summary_file_path} created.')
 
-            num_lines = len(clean_tweets)
-            batch_size = 50
-            num_batches = num_lines // batch_size + \
-                (num_lines % batch_size > 0)  # calculate number of batches
+            # num_lines = len(clean_tweets)
+            # batch_size = 50
+            # num_batches = num_lines // batch_size + \
+            #     (num_lines % batch_size > 0)  # calculate number of batches
 
-            info(
-                f'start summarizing. {num_lines} tweets will be processed with {num_batches} batches of {batch_size} tweets each')
-            for batch_num in range(num_batches):
-                start_idx = batch_num * batch_size
-                end_idx = min((batch_num + 1) * batch_size, num_lines)
-                batch_clean_tweets = clean_tweets[start_idx:end_idx]
-                process_result = self.openaiApiManager.summarize_tweets(
-                    batch_clean_tweets, self.topic)
-                with open(summary_file_path, 'a') as f:
-                    f.write(json.dumps(process_result))
-                    f.write('\n')
-                info(f'batch:{batch_num} summry write to {summary_file_path}')
-            info(f'summarizing finished')
+            # info(
+            #     f'start summarizing. {num_lines} tweets will be processed with {num_batches} batches of {batch_size} tweets each')
+            # for batch_num in range(num_batches):
+            #     start_idx = batch_num * batch_size
+            #     end_idx = min((batch_num + 1) * batch_size, num_lines)
+            #     batch_clean_tweets = clean_tweets[start_idx:end_idx]
+            #     process_result = self.openaiApiManager.summarize_tweets(
+            #         batch_clean_tweets, self.topic)
+            #     with open(summary_file_path, 'a') as f:
+            #         f.write(json.dumps(process_result))
+            #         f.write('\n')
+            #     info(f'batch:{batch_num} summry write to {summary_file_path}')

@@ -1,7 +1,7 @@
 from openai.error import APIError, InvalidRequestError, OpenAIError
 from openai.embeddings_utils import get_embedding
 from utils.Utilities import OpenaiFinishReason, TwitterTopic
-from utils.Logging import info, warn
+from utils.Logging import info, warn, error
 from dotenv import load_dotenv
 import openai
 import time
@@ -180,60 +180,70 @@ class OpenaiGpt4ApiManager():
         self.embedding_model = "text-embedding-ada-002"
         # 4096 tokens for gpt-4
         self.token_size_limit = 8192
-        # 80% of the token size limit will be used for the prompt
-        self.token_size_limit_usage_ratio = 0.8
+        # x of the token size limit will be used for the prompt
+        self.token_size_limit_usage_ratio = 0.7
+        # the summary will be x% of overall tweet size
+        self.summarize_ratio = 0.1
 
-    def _gpt4_get_complete_response(self, system_prompt: str, user_prompt: str):
-        try:
-            finish_reason = 'null'
-            text = ''
-            prompt_tokens = 0
-            total_tokens = 0
-            completion_tokens = 0
-            turns = 0
-            if system_prompt:
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ]
-            else:
-                messages = [
-                    {"role": "user", "content": user_prompt}
-                ]
-            while finish_reason != OpenaiFinishReason.STOP.value and turns < 3:
-                response = self.API.ChatCompletion.create(
-                    model=self.gpt4_model_name,
-                    messages=messages,
-                    temperature=1,
-                    n=1,
-                    presence_penalty=0,
-                    frequency_penalty=0
-                )
-                finish_reason = response['choices'][0]['finish_reason']
-                if finish_reason == OpenaiFinishReason.LENGTH.value:
-                    warn(
-                        f'OpenAI response is too long. response={json.dumps(response)} messages={json.dumps(messages)}')
-                text += response['choices'][0]['message']['content']
-                text += '\n'
-                prompt_tokens += response['usage']['prompt_tokens']
-                total_tokens += response['usage']['total_tokens']
-                completion_tokens += response['usage']['completion_tokens']
-                messages = [
-                    {"role": "user", "content": user_prompt},
-                    response['choices'][0]['message'],
-                    {"role": "user", "content": 'continue'},
-                ]
-                turns += 1
+    def _gpt4_get_complete_response(self, system_prompt: str, user_prompt: str, num_retries=3):
+        for i in range(num_retries):
+            try:
+                finish_reason = 'null'
+                text = ''
+                prompt_tokens = 0
+                total_tokens = 0
+                completion_tokens = 0
+                turns = 0
+                if system_prompt:
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                else:
+                    messages = [
+                        {"role": "user", "content": user_prompt}
+                    ]
+                while finish_reason != OpenaiFinishReason.STOP.value and turns < 3:
+                    response = self.API.ChatCompletion.create(
+                        model=self.gpt4_model_name,
+                        messages=messages,
+                        temperature=1,
+                        n=1,
+                        presence_penalty=0,
+                        frequency_penalty=0
+                    )
+                    finish_reason = response['choices'][0]['finish_reason']
+                    if finish_reason == OpenaiFinishReason.LENGTH.value:
+                        warn(
+                            f'OpenAI response is too long. response={json.dumps(response)} messages={json.dumps(messages)}')
+                    text += response['choices'][0]['message']['content']
+                    text += '\n'
+                    prompt_tokens += response['usage']['prompt_tokens']
+                    total_tokens += response['usage']['total_tokens']
+                    completion_tokens += response['usage']['completion_tokens']
+                    messages = [
+                        {"role": "user", "content": user_prompt},
+                        response['choices'][0]['message'],
+                        {"role": "user", "content": 'continue'},
+                    ]
+                    turns += 1
 
-            if finish_reason != OpenaiFinishReason.STOP.value:
-                info("OpenAI did not stop but reached the turn limit")
-            return {'usage': {'prompt_tokens': prompt_tokens, 'total_tokens': total_tokens, 'completion_tokens': completion_tokens}, 'text': text.strip(), 'finish_reason': finish_reason, 'turns': turns}
-        except APIError as e:
-            info(f"OpenAI API Error: {e}")
-            return None
+                if finish_reason != OpenaiFinishReason.STOP.value:
+                    info("OpenAI did not stop but reached the turn limit")
+                return {'usage': {'prompt_tokens': prompt_tokens, 'total_tokens': total_tokens, 'completion_tokens': completion_tokens}, 'text': text.strip(), 'finish_reason': finish_reason, 'turns': turns}
+            except APIError as e:
+                error(f"APIError occurred: {e}")
+                time.sleep(5)
+            except InvalidRequestError as e:
+                error(f"InvalidRequestError occurred: {e}")
+                time.sleep(5)
+            except OpenAIError as e:
+                error(f"OpenAIError occurred: {e}")
+                time.sleep(5)
+        raise Exception(
+            f"OpenAI API Error: Failed to get response after {num_retries} retries")
 
-    def summarize_tweets(self, tweets, topic: str, num_retries: int = 3):
-        tweets_by_line = '\n'.join(tweets)
+    def summarize_tweets(self, tweets, topic: str):
         normalized_topic = topic.replace("_", " ")
         system_setup_prompt = f"As an tweet analyzer, you will perform following tasks:\
             1. Filter out tweets unrelated to {normalized_topic} \
@@ -242,22 +252,50 @@ class OpenaiGpt4ApiManager():
             4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
             The tweets are in a single line format and always start with the author name and their number of followers. \
             Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
-        user_prompt = f"Summarize these tweets into up to 10 most important bullet points without mentioning source:\n{tweets_by_line}"
-        for i in range(num_retries):
+
+        system_setup_prompt_token_size = len(
+            nltk.word_tokenize(system_setup_prompt))
+        responses = []
+        while len(tweets) > 0:
+            if len(tweets) < 20:
+                info(
+                    f"skipping summarizing {len(tweets)} {topic} tweets because it's too short")
+                break
+            current_tweet_group = []
+            while tweets and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_tweet_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+                current_tweet_group.append(tweets.pop(0))
+            target_summary_item_count = int(
+                len(current_tweet_group) * self.summarize_ratio)
+            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} most important bullet points without mentioning source:\n"
+            tweets_by_line = '\n'.join(current_tweet_group)
+            user_prompt = f"{user_prompt_intro}{tweets_by_line}"
+            estimated_token_size = system_setup_prompt_token_size + \
+                len(nltk.word_tokenize(user_prompt))
+            info(
+                f"start summarizing {len(current_tweet_group)} tweets into {target_summary_item_count} items. estimated token size: {estimated_token_size}. ({len(tweets)} tweets left)")
             try:
                 response = self._gpt4_get_complete_response(
                     system_setup_prompt, user_prompt)
-                return response
-            except APIError as e:
-                info(f"Error occurred: {e}")
-                time.sleep(10)
-            except InvalidRequestError as e:
-                info(f"Error occurred: {e}")
-                time.sleep(10)
-            except OpenAIError as e:
-                info(f"Error occurred: {e}")
-                time.sleep(10)
-        raise ValueError("Exceeded maximum number of retries")
+                responses.append(response)
+            except Exception as e:
+                error(f"Error occurred: {e}")
+                time.sleep(5)
+        return responses
+        # for i in range(num_retries):
+        #     try:
+        #         response = self._gpt4_get_complete_response(
+        #             system_setup_prompt, user_prompt)
+        #         return response
+        #     except APIError as e:
+        #         error(f"Error occurred: {e}")
+        #         time.sleep(10)
+        #     except InvalidRequestError as e:
+        #         error(f"Error occurred: {e}")
+        #         time.sleep(10)
+        #     except OpenAIError as e:
+        #         error(f"Error occurred: {e}")
+        #         time.sleep(10)
+        # raise ValueError("Exceeded maximum number of retries")
 
     def hourly_tweet_summary_generator(self, hourly_summary_text_list, topic: str):
         news_groups = []
