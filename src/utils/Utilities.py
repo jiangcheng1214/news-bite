@@ -11,6 +11,7 @@ DAILY_SUM_ENRICHED_TWEET_FILE_NAME = 'daily_sum_enriched.jsons'
 MINIMAL_OPENAI_API_CALL_INTERVAL_SEC = 0.2
 MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING = 30
 
+
 class TwitterTopic(Enum):
     FINANCIAL = 'financial'
     TECHNOLOGY = 'technology'
@@ -38,9 +39,11 @@ def get_current_date():
     now = datetime.datetime.now()
     return now.strftime("%Y%m%d")
 
+
 def get_yesterday_date():
     yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
     return yesterday.strftime("%Y%m%d")
+
 
 def get_date(time):
     return time.strftime("%Y%m%d")

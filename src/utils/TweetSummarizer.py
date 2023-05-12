@@ -12,13 +12,14 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         self.running = False
-        # self.openaiApiManager = OpenaiGpt35ApiManager()
-        self.openaiApiManager = OpenaiGpt4ApiManager()
+        self.openaiApiManager = OpenaiGpt35ApiManager()
+        # self.openaiApiManager = OpenaiGpt4ApiManager()
 
     def summarize_hourly_tweets_if_necessary(self, back_fill: bool = False):
         date = get_date(datetime.now())
         file_paths = self._get_houly_raw_files_to_process_for_date(
             date, back_fill)
+        info(f'summarize_hourly_tweets_if_necessary file_paths={file_paths}')
         if (len(file_paths) > 0):
             info(
                 f'tweet processor started ({self.topic}). file_paths={file_paths} backfill={back_fill}')
@@ -33,13 +34,10 @@ class TweetSummarizer:
         for file_name in os.listdir(daily_data_folder):
             if file_name.startswith(RAW_TWEET_FILE_PREFIX):
                 hour_tag = file_name.split(RAW_TWEET_FILE_PREFIX)[-1]
-                if int(hour_tag) == hour_ago.hour:
+                if int(hour_tag) == hour_ago.hour or back_fill:
                     files_to_process.append(
                         os.path.join(daily_data_folder, file_name))
-                if int(hour_tag) < hour_ago.hour and back_fill:
-                    files_to_process.append(
-                        os.path.join(daily_data_folder, file_name))
-        return files_to_process
+        return sorted(files_to_process)
 
     def _process_hourly_raw_files(self, file_paths):
         for file_path in file_paths:
@@ -67,7 +65,7 @@ class TweetSummarizer:
                 dir_path, f"{SUM_TWEET_FILE_PREFIX}{file_index}")
             if os.path.exists(summary_file_path):
                 info(f"{summary_file_path} exists. Return.")
-                return
+                continue
             summarize_responses = self.openaiApiManager.summarize_tweets(
                 clean_tweets, self.topic)
             if len(summarize_responses) == 0:
