@@ -6,6 +6,7 @@ from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
 from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX
+from utils.Decorators import rabbitmq_decorator
 
 """
 This script is used to monitor twitter stream and save tweets to file.
@@ -24,7 +25,6 @@ raw_tweets_file_writer_by_topic = {topic.value: BufferedFileWriter(os.path.join(
     __file__),  '..', '..', 'data', 'tweets', topic.value), RAW_TWEET_FILE_PREFIX)
     for topic in TwitterTopic}
 tweet_count_by_topic = {topic.value: 0 for topic in TwitterTopic}
-
 
 def callback(tweet, matching_topic):
     global complete_tweets_received_by_topic, tweet_count_by_topic, total_received

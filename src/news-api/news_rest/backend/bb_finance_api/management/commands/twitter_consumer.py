@@ -13,7 +13,7 @@ class Command(BaseCommand):
         queue_name = options['queue_name']
 
         def callback(ch, method, properties, body):
-            
+
             data = json.loads(body)
 
             # 提取tweet和author_metadata数据

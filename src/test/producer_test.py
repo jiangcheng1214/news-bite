@@ -9,7 +9,7 @@ tweet_path = os.path.join(script_dir, 'tweet.json')
 def test_function():
     with open(tweet_path, 'r') as f:
         data = json.load(f)
-    return data
+    yield data
 
 if __name__ == "__main__":
     test_function()
