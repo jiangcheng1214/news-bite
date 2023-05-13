@@ -14,9 +14,9 @@ usage: python start_twitter_stream_monitor.py
 """
 
 load_dotenv()
-key = os.getenv("TWITTER_KEY")
+key = os.getenv("TWITTER_BEARER_TOKEN")
 
-assert (key is not None, "Twitter key is not set")
+assert (len(key) > 0, "Twitter key is not set")
 
 user_looker = TwitterUserLooker(key)
 total_received = 0

@@ -3,7 +3,7 @@ import sys
 import json
 import os
 from utils.Logging import info, error
-from openAI.OpenaiGpt35ApiManager import OpenaiGpt35ApiManager
+from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
 
 from utils.Utilities import SUM_TWEET_FILE_PREFIX, TwitterTopic, DAILY_SUM_TWEET_FILE_NAME, get_yesterday_date
 
@@ -27,7 +27,7 @@ summary_folder_by_topic = {topic.value: (os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', topic.value, SUMMRAY_DATE))
     for topic in TwitterTopic}
 
-openai_gpt35_api_manager = OpenaiGpt35ApiManager()
+openai_api_manager = OpenaiGpt35ApiManager()
 
 for topic in summary_folder_by_topic.keys():
     dir_path = summary_folder_by_topic[topic]
@@ -57,7 +57,7 @@ for topic in summary_folder_by_topic.keys():
         continue
     info(f"start generating daily summary for {topic}")
     i = 1
-    for summary_response in openai_gpt35_api_manager.gpt3_5_combined_hourly_summary_generator(
+    for summary_response in openai_api_manager.hourly_tweet_summary_generator(
             hourly_summary_text_list, topic):
         with open(daily_summary_file_path, 'a') as f:
             f.write(json.dumps(summary_response))

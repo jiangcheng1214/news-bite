@@ -1,6 +1,6 @@
 import os
 from utils.Utilities import TwitterTopic
-from TweetSummarizer import TweetSummarizer
+from utils.TweetSummarizer import TweetSummarizer
 from utils.Logging import info
 
 """
