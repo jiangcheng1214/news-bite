@@ -132,51 +132,93 @@ class OpenaiGpt35ApiManager():
         topic (str): topic of the tweets. example: 'financial'
     """
 
-    def hourly_tweet_summary_generator(self, hourly_summary_text_list, topic: str):
-        news_groups = []
-        news_group_growing = ''
-        for hourly_summary_text in hourly_summary_text_list:
-            for news_text in hourly_summary_text.split('\n'):
-                if not news_text:
-                    continue
-                news_tokenized = nltk.word_tokenize(news_text)
-                news_token_count = len(news_tokenized)
-                news_group_tokenized = nltk.word_tokenize(
-                    news_group_growing)
-                news_group_token_count = len(news_group_tokenized)
-                if news_group_token_count + news_token_count < self.token_size_limit * self.token_size_limit_usage_ratio:
-                    news_group_growing += news_text
-                    news_group_growing += '\n'
-                else:
-                    news_groups.append(news_group_growing)
-                    news_group_growing = ''
-        news_groups.append(news_group_growing)
-        info(f'{len(hourly_summary_text_list)} {topic} summaries are grouped into {len(news_groups)} chuncks for further summarization')
-        # further_summaries = []
-        for n in range(len(news_groups)):
-            news_group = news_groups[n]
+    def aggregate_hourly_tweet_summary(self, single_summary_text_list, topic: str):
+        normalized_topic = topic.replace("_", " ")
+        system_setup_prompt = f"As an hourly news summarizer, your specific tasks are following:\
+                    1. Filter out tweets unrelated to {normalized_topic} \
+                    2. Filter out promotional tweets, questions and tweets with 5 or less words \
+                    3. Combine similar tweets and extract valuable information into bullet point news-style format \
+                    4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
+                    The tweets are in a single line format and always start with the author name and their number of followers. \
+                    Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
+        system_setup_prompt_token_size = len(
+            nltk.word_tokenize(system_setup_prompt))
+        responses = []
+        while len(single_summary_text_list) > 0:
+            current_group = []
+            while single_summary_text_list and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+                current_group.append(single_summary_text_list.pop(0))
+            user_prompt_intro = f"Generate a {normalized_topic} news summary with up to 20 bullet points based on following news:\n"
+            summary_by_line = '\n'.join(current_group)
+            user_prompt = f"{user_prompt_intro}{summary_by_line}"
+            estimated_token_size = system_setup_prompt_token_size + \
+                len(nltk.word_tokenize(user_prompt))
             info(
-                f"Summarizing {topic} news, batch {n+1}/{len(news_groups)}")
-            normalized_topic = topic.replace("_", " ")
-            system_setup_prompt = f"As an hourly news summarizer, your specific tasks are following:\
-                        1. Filter out tweets unrelated to {normalized_topic} \
-                        2. Filter out promotional tweets, questions and tweets with 5 or less words \
-                        3. Combine similar tweets and extract valuable information into bullet point news-style format \
-                        4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
-                        The tweets are in a single line format and always start with the author name and their number of followers. \
-                        Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
-            user_prompt = f"Generate a {normalized_topic} news summary with up to 20 bullet points based on following news:\n{news_group}"
-            for i in range(3):
+                f"start merging {len(current_group)} summary items into up to 20 items. estimated token size: {estimated_token_size}. ({len(single_summary_text_list)} tweets left)")
+            try:
                 response = self._gpt35_get_complete_response(
                     system_setup_prompt, user_prompt)
-                if response is not None:
-                    break
+                responses.append(response)
+            except Exception as e:
+                error(f"Error occurred: {e}")
+                time.sleep(5)
+        if len(responses) > 1:
+            all_summary_items = []
+            for r in responses:
+                all_summary_items += r['text'].split('\n')
+            return self.merge_summary_items(all_summary_items)
+        assert len(responses) == 1
+        return responses[0]['text'].split('\n')
+
+    def merge_summary_items(self, all_summary_items, topic: str):
+        normalized_topic = topic.replace("_", " ")
+        current_group = []
+        while 1:
+            while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+                current_group.append(all_summary_items.pop(0))
+            user_prompt_intro = f"Remove repetitive items, filter out items that are not {normalized_topic} news and generate up to 20 news bullet points. Following news items are one item per line:\n"
+            summary_by_line = '\n'.join(current_group)
+            user_prompt = f"{user_prompt_intro}{summary_by_line}"
+            estimated_token_size = len(nltk.word_tokenize(user_prompt))
+            info(
+                f"start merging {len(current_group)} summary items. Estimated prompt token size: {estimated_token_size}. ({len(all_summary_items)} summaries left)")
+            try:
+                response = self._gpt35_get_complete_response(
+                    None, user_prompt)
+                summary_items = response['text'].split('\n')
+                info(
+                    f"summary items merged {len(current_group)} => {len(summary_items)} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+                current_group = []
+                if len(all_summary_items) > 0:
+                    all_summary_items += summary_items
                 else:
-                    info(f"OpenAI API Error: Retrying {i+1} out of 3")
-                    time.sleep(10)
-            yield response
+                    if len(summary_items) <= 20:
+                        return summary_items
+                    else:
+                        return self.filter_summary_items(summary_items, topic)
+            except Exception as e:
+                error(f"Error occurred: {e}")
+                time.sleep(5)
+
+    def filter_summary_items(self, all_summary_items, topic: str):
+        normalized_topic = topic.replace("_", " ")
+        user_prompt = f"Extract up to 20 {normalized_topic} news items from a list of text. Following is a list of text (one text item per line):\n"
+        estimated_token_size = len(nltk.word_tokenize(user_prompt))
+        info(
+            f"start extracting {normalized_topic} news from {len(all_summary_items)} summaries. Estimated prompt token size: {estimated_token_size}.")
+        try:
+            response = self._gpt35_get_complete_response(
+                None, user_prompt)
+            summary_items = response['text'].split('\n')
+            info(
+                f"summary items extracted {len(summary_items)} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+            return summary_items
+        except Exception as e:
+            error(f"Error occurred: {e}")
+            return []
 
     # WIP
+
     def filter_unrelated_tweets(self, tweets, topic: str):
         tweets_by_line = '\n'.join(tweets)
         normalized_topic = topic.replace("_", " ")
@@ -319,7 +361,7 @@ class OpenaiGpt4ApiManager():
         #         time.sleep(10)
         # raise ValueError("Exceeded maximum number of retries")
 
-    def hourly_tweet_summary_generator(self, hourly_summary_text_list, topic: str):
+    def aggregate_hourly_tweet_summary(self, hourly_summary_text_list, topic: str):
         news_groups = []
         news_group_growing = ''
         for hourly_summary_text in hourly_summary_text_list:

@@ -3,7 +3,6 @@ import datetime
 import re
 
 RAW_TWEET_FILE_PREFIX = 'raw_'
-CLEAN_TWEET_FILE_PREFIX = 'clean_'
 SUM_TWEET_FILE_PREFIX = 'sum_'
 DAILY_SUM_TWEET_FILE_NAME = 'daily_sum.jsons'
 DAILY_SUM_ENRICHED_TWEET_FILE_NAME = 'daily_sum_enriched.jsons'

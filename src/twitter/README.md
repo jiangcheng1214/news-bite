@@ -22,17 +22,6 @@ data example (line per json/tweet):
 }
 ```
 
-## Clean data
-Tweet content with author and follower count. 1 to 1 mapping to raw data. This will be used for hourly summarization
-
-data example (line per tweet):
-```
-(XANA) (231142) #XANAGenesis NFT #7691 (Katharine) Has traded at 0.4149 ETH🔥 Meet this stunning #AI beauty "Katharine"🥰 ➡️Hair: Bob Sparkle Grey ➡️Clothes: Tech Master Orange Gray ➡️Eyes: Bright Sharp Blue #XANA #Metaverse #NFTs #NFTJapan #NFTCommunity 
-```
-
-script: `NO script needed for this step, clean data is generated along with raw data`
-
-
 ## Hourly summary
 Hourly tweet summary based on clean data. 1 to N mapping to clean data. Summarization is done via AI. As we know AI is more like a black box, we can only control over prompt and will leverage human knowledge for verification on every AI version release.
 
