@@ -8,5 +8,6 @@ class Tweet(models.Model):
     edit_history_tweet_ids = JSONField()
     entities = JSONField()
     tweet_id = models.CharField(max_length=255, primary_key=True)
+    tweet_type = models.CharField(max_length=25,default="")
     lang = models.CharField(max_length=10)
     text = models.TextField()

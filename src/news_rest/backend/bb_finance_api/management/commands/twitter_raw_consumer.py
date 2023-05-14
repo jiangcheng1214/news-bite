@@ -7,11 +7,16 @@ class Command(BaseCommand):
     help = 'Consume Twitter data from RabbitMQ'
                         
     def handle(self, *args, **options):
-        queue_name = 'twitter_messages'
+        queue_name = 'twitter_raw_data'
 
         def callback(ch, method, properties, body):
-
-            data = json.loads(body)
+            body = json.loads(body)
+            data = json.loads(body[1])
+            topic_split = body[0].split(":")
+            if len(topic_split) >= 2:
+                topic = topic_split[1]
+            else:
+                topic = ""
 
             # 提取tweet和author_metadata数据
             tweet_data = data['tweet']
@@ -21,15 +26,15 @@ class Command(BaseCommand):
             author_metadata, created = AuthorMetadata.objects.get_or_create(
                 id=author_metadata_data['id'],
                 defaults={
-                    'name': author_metadata_data['name'],
-                    'username': author_metadata_data['username'],
-                    'url': author_metadata_data['url'],
-                    'description': author_metadata_data['description'],
-                    'protected': author_metadata_data['protected'],
-                    'verified': author_metadata_data['verified'],
-                    'location': author_metadata_data['location'],
-                    'created_at': author_metadata_data['created_at'],
-                    'public_metrics': json.dumps(author_metadata_data['public_metrics']),
+                    'name': author_metadata_data.get('name', ''),
+                    'username': author_metadata_data.get('username', ''),
+                    'url': author_metadata_data.get('url', ''),
+                    'description': author_metadata_data.get('description', ''),
+                    'protected': author_metadata_data.get('protected', False),
+                    'verified': author_metadata_data.get('verified', False),
+                    'location': author_metadata_data.get('location', ''),
+                    'created_at': author_metadata_data.get('created_at', None),
+                    'public_metrics': json.dumps(author_metadata_data.get('public_metrics', {})),
                 }
             )
 
@@ -40,6 +45,7 @@ class Command(BaseCommand):
                 edit_history_tweet_ids=json.dumps(tweet_data['edit_history_tweet_ids']),
                 entities=json.dumps(tweet_data['entities']),
                 tweet_id=tweet_data['id'],
+                tweet_type = topic,
                 lang=tweet_data['lang'],
                 text=tweet_data['text']
             )

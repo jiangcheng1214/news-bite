@@ -8,6 +8,6 @@ connection = pika.BlockingConnection(
 channel = connection.channel()
 
 # Declare a queue
-channel.queue_declare(queue='twitter_messages')
+channel.queue_declare(queue='twitter_raw_data')
 
 connection.close()
