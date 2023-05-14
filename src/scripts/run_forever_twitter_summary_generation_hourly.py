@@ -48,7 +48,7 @@ while True:
                 TwitterTopic.FINANCIAL.value, yesterday_date, 18, 24))
 
         summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCIAL.value, today_date, f"summary_{hour}.jsons")
+            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCIAL.value, today_date, f"summary_{hour}")
         tweet_summarizer.summarize_intra_day_tweets(
             hourly_summary_file_paths, summary_file_path)
         
@@ -59,7 +59,7 @@ while True:
             raw_tweet_file_paths.extend(get_raw_tweet_file_paths(
                 TwitterTopic.FINANCIAL.value, yesterday_date, 18, 24))
         enriched_summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCIAL.value, today_date, f"summary_{hour}_enriched.jsons")
+            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCIAL.value, today_date, f"summary_{hour}_enriched")
         tweet_summarizer.enrich_daily_summary(
             raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
         TwitterAPIManager().upload_daily_summary(enriched_summary_file_path)
