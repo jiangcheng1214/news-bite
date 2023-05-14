@@ -1,7 +1,7 @@
 import os
 import time
 
-from utils.Utilities import get_current_date, get_current_hour
+from utils.Utilities import get_today_date, get_current_hour
 
 
 class BufferedFileWriter:
@@ -22,7 +22,7 @@ class BufferedFileWriter:
 
     def flush(self):
         # aggregate data houly into one file
-        date_dir_name = get_current_date()
+        date_dir_name = get_today_date()
         current_file_index = get_current_hour()
         file_path = os.path.join(
             self.master_dir_path, date_dir_name, f"{self.file_name_prefix}{current_file_index}")

@@ -192,10 +192,12 @@ class OpenaiGpt35ApiManager():
                 if len(all_summary_items) > 0:
                     all_summary_items += summary_items
                 else:
-                    if len(summary_items) <= 20:
-                        return summary_items
-                    else:
-                        return self.filter_summary_items(summary_items, topic)
+                    return summary_items
+                    # Uncomment the following code make sure we get 20 or less summary items
+                    # if len(summary_items) <= 20:
+                    #     return summary_items
+                    # else:
+                    #     return self.filter_summary_items(summary_items, topic)
             except Exception as e:
                 error(f"Error occurred: {e}")
                 time.sleep(5)
