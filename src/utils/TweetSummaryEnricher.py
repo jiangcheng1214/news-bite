@@ -5,7 +5,7 @@ import redis
 import os
 import time
 from dotenv import load_dotenv
-from utils.Utilities import MINIMAL_OPENAI_API_CALL_INTERVAL_SEC
+from utils.Utilities import MINIMAL_OPENAI_API_CALL_INTERVAL_SEC, DEFAULT_REDIS_CACHE_EXPIRE_SEC
 from utils.Logging import info
 from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
 load_dotenv()
@@ -30,7 +30,7 @@ class TweetSummaryEnricher():
             if similarity > best_score:
                 best_score = similarity
                 best_match = source
-        return best_match
+        return best_match, best_score
 
     def get_text_embedding(self, text):
         first_100_char_of_text_as_cache_key = text[:100]
@@ -42,7 +42,7 @@ class TweetSummaryEnricher():
                         MINIMAL_OPENAI_API_CALL_INTERVAL_SEC - time_elapsed)
             embedding = self.openaiApiManager.get_embedding(text)
             self.last_request_time = time.time()
-            self.redis_client.set(
-                first_100_char_of_text_as_cache_key, json.dumps(embedding))
+            self.redis_client.set(first_100_char_of_text_as_cache_key,
+                                  json.dumps(embedding), ex=DEFAULT_REDIS_CACHE_EXPIRE_SEC)
             info(f"{first_100_char_of_text_as_cache_key} cached")
         return json.loads(self.redis_client.get(first_100_char_of_text_as_cache_key))

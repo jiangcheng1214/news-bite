@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
-from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, DAILY_SUM_TWEET_FILE_NAME, DAILY_SUM_ENRICHED_TWEET_FILE_NAME
+from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, INTRA_DAY_SUMMARY_FILE_PREFIX, INTRA_DAY_SUMMARY_ENRICHED_FILE_PREFIX
 from utils.Logging import info
 from utils.TweetSummaryEnricher import TweetSummaryEnricher
 
@@ -26,74 +26,68 @@ class TweetSummarizer:
                 f'tweet processor started ({self.topic}). file_paths={file_paths} backfill={back_fill}')
             self._process_hourly_raw_files(file_paths)
 
-    def summarize_daily_tweets(self, date):
-        info(f"start generating daily {self.topic} tweet summary for {date}")
-        summary_folder_path = os.path.join(
-            self.master_folder, self.topic, date)
-        if not os.path.exists(summary_folder_path):
-            info(f"{summary_folder_path} doesn't exist, skip")
+    def summarize_intra_day_tweets(self, hourly_summary_file_paths, output_file_path):
+        info(
+            f"start generating intra day {self.topic} tweet summary from {hourly_summary_file_paths}")
+        if os.path.exists(output_file_path):
+            info(f"{output_file_path} already exists, skip")
             return
         single_summary_text_list = []
-        for hourly_summary_file_name in os.listdir(summary_folder_path):
-            if hourly_summary_file_name.startswith(SUM_TWEET_FILE_PREFIX):
-                lines = open(os.path.join(
-                    summary_folder_path, hourly_summary_file_name), 'r').readlines()
-                for line in lines:
-                    if not line:
+        for hourly_summary_file_path in hourly_summary_file_paths:
+            if not os.path.exists(hourly_summary_file_path):
+                info(f"{hourly_summary_file_path} doesn't exist, skip")
+                continue
+            lines = open(hourly_summary_file_path, 'r').readlines()
+            for line in lines:
+                if not line:
+                    continue
+                try:
+                    summary_json = json.loads(line)
+                    if not summary_json:
                         continue
-                    try:
-                        summary_json = json.loads(line)
-                        if not summary_json:
-                            continue
-                        summary_text = summary_json['text'].strip()
-                        for summary in summary_text.split('\n'):
-                            single_summary_text_list.append(summary)
-                    except json.decoder.JSONDecodeError:
-                        info(f"json.decoder.JSONDecodeError: {line}")
-                    except TypeError:
-                        info(f"TypeError: {line}")
-        daily_summary_file_path = os.path.join(
-            summary_folder_path, DAILY_SUM_TWEET_FILE_NAME)
-        if os.path.exists(daily_summary_file_path):
-            info(f"{daily_summary_file_path} already exists, skip")
-            return
+                    summary_text = summary_json['text'].strip()
+                    for summary in summary_text.split('\n'):
+                        single_summary_text_list.append(summary)
+                except json.decoder.JSONDecodeError:
+                    info(f"json.decoder.JSONDecodeError: {line}")
+                except TypeError:
+                    info(f"TypeError: {line}")
+
         info(f"start generating daily summary for {self.topic}")
         aggregated_summary_item_list = self.openaiApiManager.merge_summary_items(
             single_summary_text_list, self.topic)
-        with open(daily_summary_file_path, 'a') as f:
+        if not os.path.exists(os.path.dirname(output_file_path)):
+            os.makedirs(os.path.dirname(output_file_path))
+        with open(output_file_path, 'a') as f:
             for summary_item in aggregated_summary_item_list:
                 f.write(summary_item)
                 f.write('\n')
         info(
-            f"{date} {self.topic} daily summary has been writen to {daily_summary_file_path}")
+            f"{self.topic} intra day summary has been writen to {output_file_path}")
 
-    def enrich_daily_summary(self, date):
-        info(f"start enriching daily {self.topic} tweet summary for {date}")
-        summary_folder = os.path.join(
-            self.master_folder, self.topic, date)
+    def enrich_daily_summary(self, raw_tweet_file_paths, summary_file_path, output_file_path):
+        info(
+            f"start enriching intraday day {self.topic} tweet summary from {raw_tweet_file_paths} for {summary_file_path}")
         text_to_tweet = {}
         summary_list = []
 
-        daily_summary_file_path = os.path.join(
-            summary_folder, DAILY_SUM_TWEET_FILE_NAME)
-        if not os.path.exists(daily_summary_file_path):
-            info(f"{daily_summary_file_path} doesn't exist, skip")
+        if not os.path.exists(summary_file_path):
+            info(f"{summary_file_path} doesn't exist, skip")
             return
-        enriched_summary_file_path = os.path.join(
-            summary_folder, f"{DAILY_SUM_ENRICHED_TWEET_FILE_NAME}")
-        if os.path.exists(enriched_summary_file_path):
-            info(f"{enriched_summary_file_path} already exists, skip")
+        if os.path.exists(output_file_path):
+            info(f"{output_file_path} already exists, skip")
             return
-        for line in open(daily_summary_file_path).readlines():
+        for line in open(summary_file_path).readlines():
             individual_summary = line.strip()
             if len(individual_summary) == 0:
                 continue
             summary_list.append(individual_summary)
 
-        for file_name in os.listdir(summary_folder):
-            if not file_name.startswith(RAW_TWEET_FILE_PREFIX):
+        for raw_tweet_file_path in raw_tweet_file_paths:
+            if not os.path.exists(raw_tweet_file_path):
+                info(f"{raw_tweet_file_path} doesn't exist, skip")
                 continue
-            for line in open(os.path.join(summary_folder, file_name)).readlines():
+            for line in open(raw_tweet_file_path).readlines():
                 json_data = json.loads(line)
                 clean_text = get_clean_tweet_text(json_data["tweet"]['text'])
                 if len(clean_text) < MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING:
@@ -113,21 +107,23 @@ class TweetSummarizer:
         enriched_summary_list = []
         for individual_summary in summary_list:
             info(f"enriching {individual_summary}")
-            source_text = tagger.find_most_similar_url_uisng_openai_embedding(
+            source_text, match_score = tagger.find_most_similar_url_uisng_openai_embedding(
                 individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
             unwound_url = text_to_tweet[source_text]['unwound_url']
-            enriched_summary = {"summary": individual_summary,  "source_text": source_text,
+            enriched_summary = {"summary": individual_summary, "match_score": match_score,  "source_text": source_text,
                                 "tweet_url": tweet_url, "unwound_url": unwound_url}
             enriched_summary_list.append(enriched_summary)
             info(
                 f'{individual_summary}\n  {tweet_url}\n  {unwound_url}\n  {source_text}')
-        with open(enriched_summary_file_path, 'a') as f:
+        enriched_summary_list = sorted(
+            enriched_summary_list, key=lambda x: x['match_score'], reverse=True)
+        with open(output_file_path, 'a') as f:
             for enriched_summary in enriched_summary_list:
                 f.write(json.dumps(enriched_summary))
                 f.write('\n')
         info(
-            f"{len(summary_list)} enriched summaries written to {enriched_summary_file_path}")
+            f"{len(summary_list)} enriched summaries written to {output_file_path}")
 
     def _get_houly_raw_files_to_process_for_date(self, date, back_fill=False):
         hour_ago = datetime.now() - timedelta(hours=1)

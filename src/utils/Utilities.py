@@ -4,12 +4,17 @@ import re
 
 RAW_TWEET_FILE_PREFIX = 'raw_'
 SUM_TWEET_FILE_PREFIX = 'sum_'
-DAILY_SUM_TWEET_FILE_NAME = 'daily_sum.jsons'
-DAILY_SUM_ENRICHED_TWEET_FILE_NAME = 'daily_sum_enriched.jsons'
+INTRA_DAY_SUMMARY_FILE_PREFIX = 'agg_'
+INTRA_DAY_SUMMARY_ENRICHED_FILE_PREFIX = 'enriched_'
 
 MINIMAL_OPENAI_API_CALL_INTERVAL_SEC = 0.2
 MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING = 30
 
+TWEET_LENGTH_CHAR_LIMIT = 280
+TWEET_CONTENT_BUFFER = 6
+TWEET_ONE_TIME_POST_LIMIT = 5
+
+DEFAULT_REDIS_CACHE_EXPIRE_SEC = 60 * 60 * 24 * 7 # 7 days
 
 class TwitterTopic(Enum):
     FINANCIAL = 'financial'
@@ -34,7 +39,7 @@ def get_current_hour():
     return now.hour
 
 
-def get_current_date():
+def get_today_date():
     now = datetime.datetime.now()
     return now.strftime("%Y%m%d")
 
