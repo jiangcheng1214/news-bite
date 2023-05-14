@@ -5,12 +5,9 @@ from bb_finance_api.models import AuthorMetadata
 from bb_finance_api.models import Tweet
 class Command(BaseCommand):
     help = 'Consume Twitter data from RabbitMQ'
-
-    def add_arguments(self, parser):
-        parser.add_argument('queue_name', type=str, help='The name of the queue to consume data from')
                         
     def handle(self, *args, **options):
-        queue_name = options['queue_name']
+        queue_name = 'twitter_messages'
 
         def callback(ch, method, properties, body):
 

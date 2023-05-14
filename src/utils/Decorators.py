@@ -8,11 +8,7 @@ def rabbitmq_decorator(queue_name,is_json=False):
         @wraps(func)
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
-            if is_json:
-                processed_data = json.dumps(result)
-            else:
-                processed_data = result
-
+            processed_data = json.dumps(result)
             rabbitmq_producer = RabbitMQProducer()
             rabbitmq_producer.publish(queue_name, processed_data)
             return result

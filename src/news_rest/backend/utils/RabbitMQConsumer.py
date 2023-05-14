@@ -2,7 +2,7 @@ import pika
 
 class RabbitMQConsumer:
     def __init__(self, host='localhost'):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host))
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host,virtual_host='/'))
         self.channel = self.connection.channel()
 
     def declare_queue(self, queue_name):

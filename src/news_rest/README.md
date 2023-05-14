@@ -11,6 +11,7 @@ News API build in DRF (Django REST Framework)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
   - [Usage](#usage)
+  - [bugs](#bugs)
   - [Contributing](#contributing)
   - [License](#license)
   - [Contact](#contact)
@@ -68,6 +69,15 @@ python manage.py crontab show
 python manage.py crontab remove
 
 ....
+
+
+## bugs
+1. 
+```shell
+LDFLAGS="-L$(brew --prefix zlib)/lib -L$(brew --prefix openssl)/lib" \
+CPPFLAGS="-I$(brew --prefix zlib)/include -I$(brew --prefix openssl)/include" \
+pip install mysqlclient
+```
 
 ## Contributing
 

@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     #'core',
     #'ecommerce', #New app
     'bb_finance_api',
-    'bb_finance_models',
     'django_crontab',
 ]
 
@@ -115,6 +114,7 @@ DATABASES = {
         'PORT': '3306',
         'OPTIONS': {
             'charset': 'utf8mb4',
+            'sql_mode': 'traditional',
         },
     }
 }

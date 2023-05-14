@@ -6,7 +6,6 @@ from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
 from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX
-from utils.Decorators import rabbitmq_decorator
 
 """
 This script is used to monitor twitter stream and save tweets to file.
