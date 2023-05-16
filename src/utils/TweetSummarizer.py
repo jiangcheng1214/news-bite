@@ -1,8 +1,8 @@
 import json
 import os
 from datetime import datetime, timedelta
-from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
-from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, INTRA_DAY_SUMMARY_FILE_PREFIX, INTRA_DAY_SUMMARY_ENRICHED_FILE_PREFIX
+from openAI.OpenaiGptApiManager import OpenaiGptApiManager
+from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, OpenaiModelVersion
 from utils.Logging import info
 from utils.TweetSummaryEnricher import TweetSummaryEnricher
 
@@ -13,8 +13,8 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         self.running = False
-        self.openaiApiManager = OpenaiGpt35ApiManager()
-        # self.openaiApiManager = OpenaiGpt4ApiManager()
+        self.openaiApiManager = OpenaiGptApiManager(
+            OpenaiModelVersion.GPT3_5.value)
 
     def summarize_hourly_tweets_if_necessary(self, back_fill: bool = False):
         date = get_date(datetime.now()-timedelta(hours=1))

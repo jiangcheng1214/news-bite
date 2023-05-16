@@ -5,9 +5,9 @@ import redis
 import os
 import time
 from dotenv import load_dotenv
-from utils.Utilities import MINIMAL_OPENAI_API_CALL_INTERVAL_SEC, DEFAULT_REDIS_CACHE_EXPIRE_SEC
+from utils.Utilities import MINIMAL_OPENAI_API_CALL_INTERVAL_SEC, DEFAULT_REDIS_CACHE_EXPIRE_SEC, OpenaiModelVersion
 from utils.Logging import info
-from openAI.OpenaiGptApiManager import OpenaiGpt35ApiManager, OpenaiGpt4ApiManager
+from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -17,8 +17,7 @@ class TweetSummaryEnricher():
         self.sources = sources
         self.last_request_time = None  # error_code=None error_message='Rate limit reached for default-global-with-image-limits in organization org-mJUMNPeqLz41mk3VvrEAqOMV on requests per min. Limit: 60 / min. Please try again in 1s. Contact support@openai.com if you continue to have issues. Please add a payment method to your account to increase your rate limit. Visit https://platform.openai.com/account/billing to add a payment method.' error_param=None error_type=requests message='OpenAI API error received' stream_error=False
         self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
-        # self.openaiApiManager = OpenaiGpt35ApiManager()
-        self.openaiApiManager = OpenaiGpt4ApiManager()
+        self.openaiApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
 
     def find_most_similar_url_uisng_openai_embedding(self, target_sentence):
         target_embedding = self.openaiApiManager.get_embedding(target_sentence)
