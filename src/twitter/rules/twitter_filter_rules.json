@@ -5,7 +5,7 @@
     },
     {
         "value": "(stocks OR bonds OR investing OR trading OR market OR portfolio OR cryptocurrency OR GDP OR inflation OR unemployment OR earnings OR dividends OR \"risk management\" OR finance OR financial OR \"earning report\" OR derivatives OR \"interest rates\" OR forex OR commodities OR \"mutual funds\" OR \"hedge funds\" OR stockmarket OR \"stock market\") -#giveaway -#giveaways -giveaway -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:100000",
-        "tag": "financial"
+        "tag": "finance"
     },
     {
         "value": "(technology OR \"IT news\" OR \"AI\" OR \"machine learning\" OR \"deep learning\" OR \"neural networks\" OR \"computer vision\" OR cryptocurrency OR blockchain OR cybersecurity OR web3 OR wearables OR SEC OR \"silicon valley\" OR \"programming\") -#giveaway -#giveaways -giveaway -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:100000",

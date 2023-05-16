@@ -23,8 +23,10 @@ complete_tweets_received_by_topic = {topic.value: [] for topic in TwitterTopic}
 raw_tweets_file_writer_by_topic = {topic.value: BufferedFileWriter(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', topic.value), RAW_TWEET_FILE_PREFIX)
     for topic in TwitterTopic}
-tweet_count_by_topic = {topic.value: 0 for topic in TwitterTopic}
 
+monitored_topics = [TwitterTopic.FINANCE.value] # Add more topics here if needed
+
+tweet_count_by_topic = {topic: 0 for topic in monitored_topics}
 
 def callback(tweet, matching_topic):
     global complete_tweets_received_by_topic, tweet_count_by_topic, total_received
@@ -38,12 +40,11 @@ def callback(tweet, matching_topic):
     author_name = complete_tweet_received['authorMetadata']['name']
     followers_count = complete_tweet_received['authorMetadata']['public_metrics']['followers_count']
     stats_string = f'New tweet received from {author_name} with {followers_count} followers.'
-    for t in TwitterTopic:
-        stats_string += f' {t.value}:{tweet_count_by_topic[t.value]}'
+    for t in tweet_count_by_topic.keys():
+        stats_string += f' {t}:{tweet_count_by_topic[t]}'
     info(stats_string)
     raw_tweets_file_writer_by_topic[matching_topic].append(
         json.dumps(complete_tweet_received))
 
-
-fetcher = TwitterFilteredStreamer(key, callback)
-fetcher.start_stream()
+streamer = TwitterFilteredStreamer(key, monitored_topics, callback)
+streamer.start_stream()

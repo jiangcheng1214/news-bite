@@ -14,12 +14,18 @@ TWEET_LENGTH_CHAR_LIMIT = 280
 TWEET_CONTENT_BUFFER = 6
 TWEET_ONE_TIME_POST_LIMIT = 5
 
-DEFAULT_REDIS_CACHE_EXPIRE_SEC = 60 * 60 * 24 * 7 # 7 days
+DEFAULT_REDIS_CACHE_EXPIRE_SEC = 60 * 60 * 24 * 7  # 7 days
+
 
 class TwitterTopic(Enum):
-    FINANCIAL = 'financial'
+    FINANCE = 'finance'
     TECHNOLOGY = 'technology'
     CRYPTO_CURRENCY = 'crypto_currency'
+
+
+class OpenaiModelVersion(Enum):
+    GPT3_5 = 0
+    GPT4 = 1
 
 
 class OpenaiFinishReason(Enum):
