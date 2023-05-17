@@ -15,7 +15,8 @@ from utils.Logging import info
 load_dotenv()
 key = os.getenv("TWITTER_BEARER_TOKEN")
 
-assert (len(key) > 0, "Twitter key is not set")
+print(key)
+#assert (len(key) > 0, "Twitter key is not set")
 
 user_looker = TwitterUserLooker(key)
 total_received = 0
@@ -27,16 +28,13 @@ tweet_count_by_topic = {topic.value: 0 for topic in TwitterTopic}
 
 
 # 定义Stream的名称
-stream_name = 'twitter_stream'
 
 def callback(tweet, matching_topic):
     global complete_tweets_received_by_topic, tweet_count_by_topic, total_received
     author_metadata = user_looker.lookup_user_metadata(tweet['author_id'])
     complete_tweet_received = {'tweet': tweet,
                                'authorMetadata': author_metadata}
-    # 将数据作为新的消息添加到Redis Stream
-    redis_client.xadd(stream_name + '_' + matching_topic, {'tweet':json.dumps(tweet),'authorMetadata':json.dumps(author_metadata)})
-
+    
     complete_tweets_received_by_topic[matching_topic].append(
         complete_tweet_received)
     tweet_count_by_topic[matching_topic] += 1
@@ -49,6 +47,11 @@ def callback(tweet, matching_topic):
     info(stats_string)
     raw_tweets_file_writer_by_topic[matching_topic].append(
          json.dumps(complete_tweet_received))
+    
+    # 将数据作为新的消息添加到Redis Stream
+    tweet['tweet_type'] = matching_topic
+    redis_client.xadd('twitter_stream', {'tweet':json.dumps(tweet),'authorMetadata':json.dumps(author_metadata)})
+
 
 
 REDISDB = 1
@@ -56,7 +59,7 @@ REDISDB = 1
 # app = Celery('twitter_stream', broker='redis://localhost:6379/'+REDISDB)
 
 # 连接到Redis
-redis_client = redis.Redis(host='localhost', port=6379, db=REDISDB)
+redis_client = redis.Redis(host='localhost', port=6379, db=REDISDB, password="MyN3wP4ssw0rd")
 
 fetcher = TwitterFilteredStreamer(key, callback)
 fetcher.start_stream()
