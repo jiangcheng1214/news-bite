@@ -3,16 +3,20 @@ import time
 import pyshorteners
 import tweepy
 import os
+import redis
 from dotenv import load_dotenv
-from utils.Logging import error, info
-from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_CONTENT_BUFFER, TWEET_ONE_TIME_POST_LIMIT
+from utils.Logging import error, info, warn
+from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_CONTENT_BUFFER, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY
 import json
+from utils.TweetSummaryEnricher import TweetSummaryEnricher
 load_dotenv()
 
 
 class TwitterAPIManager:
     def __init__(self):
         self.api = self.create_api()
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.tagger = TweetSummaryEnricher()
 
     def create_api(self):
         consumer_key = os.getenv("TWITTER_POSTING_ACCOUNT_CONSUMER_API_KEY")
@@ -33,20 +37,37 @@ class TwitterAPIManager:
         info("API created")
         return api
 
-    def upload_daily_summary(self, enriched_summary_file_path):
+    def should_post(self, tweet_json_data):
+        summary_text = tweet_json_data['summary']
+        if len(summary_text) == 0:
+            return False
+        if tweet_json_data['unwound_url'] is None or len(tweet_json_data['unwound_url']) == 0:
+            return False
+        posted_tweets = self.redis_client.get(REDIS_POSTED_TWEETS_KEY)
+        if not posted_tweets:
+            return True
+        posted_tweets = json.loads(posted_tweets)
+        for posted_tweet in posted_tweets:
+            similarity = self.tagger.get_similarity(
+                summary_text, posted_tweet)
+            if similarity > 0.8:
+                warn(
+                    f'Tweet is too similar to a previously posted tweet, similarity: {similarity}. posted_tweet: {posted_tweet}, summary_text: {summary_text}')
+                return False
+        return True
+
+    def upload_summary_items(self, enriched_summary_file_path, max_items=None):
         if not os.path.exists(enriched_summary_file_path):
             error(f"Summary file {enriched_summary_file_path} does not exist")
             return
-        clean_content_list = []
+        post_limit = max_items if max_items else TWEET_DEFAULT_POST_LIMIT
+        summary_text_list = []
         short_url_list = []
         with open(enriched_summary_file_path, 'r') as f:
             for l in f.readlines():
                 data = json.loads(l)
                 summary_text = data['summary']
-                cleaned_summary_text = self.clean_text(summary_text)
-                if len(cleaned_summary_text) == 0:
-                    continue
-                if data['unwound_url'] is None or len(data['unwound_url']) == 0:
+                if self.should_post(data) == False:
                     continue
                 url = data['unwound_url']
                 try:
@@ -54,12 +75,12 @@ class TwitterAPIManager:
                 except Exception as e:
                     error(f"Error shortening url {url}: {e}")
                     continue
-                clean_content_list.append(cleaned_summary_text)
+                summary_text_list.append(summary_text)
                 short_url_list.append(short_url)
 
         tweet_count = 0
-        while len(clean_content_list) > 0 and tweet_count < TWEET_ONE_TIME_POST_LIMIT:
-            clean_content = clean_content_list.pop(0)
+        while len(summary_text_list) > 0 and tweet_count < post_limit:
+            clean_content = summary_text_list.pop(0)
             short_url = short_url_list.pop(0)
             if len(clean_content) > TWEET_LENGTH_CHAR_LIMIT - TWEET_CONTENT_BUFFER:
                 continue
@@ -67,10 +88,18 @@ class TwitterAPIManager:
             info(f"Posting tweet:\n{tweet_content}")
             try:
                 self.api.update_status(tweet_content)
+                posted_tweets = self.redis_client.get(REDIS_POSTED_TWEETS_KEY)
+                if not posted_tweets:
+                    posted_tweets = []
+                else:
+                    posted_tweets = json.loads(posted_tweets)
+                posted_tweets.append(clean_content)
+                self.redis_client.set(
+                    REDIS_POSTED_TWEETS_KEY, json.dumps(posted_tweets),  ex=DEFAULT_REDIS_CACHE_EXPIRE_SEC)
                 tweet_count += 1
             except Exception as e:
                 error(f"Error posting tweet: {e}")
-                break
+                continue
             time.sleep(1)
         info(
             f"Posted {tweet_count} tweets successfully.")

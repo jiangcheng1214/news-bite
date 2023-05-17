@@ -43,19 +43,19 @@ for summarizer in tweet_summarizers:
     if summarizer.topic != TwitterTopic.FINANCE.value:
         # remove this if we want to summarize all topics
         continue
-    for hour in [6, 12, 18]:
+    for hour in [3, 6, 9, 12, 15, 18, 21, 24]:
         summary_file_paths = get_hourly_summary_file_paths(
-            summarizer.topic, SUMMRAY_DATE, hour - 6, hour)
+            summarizer.topic, explicit_date_from_user, hour - 3, hour)
         summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, SUMMRAY_DATE, f"summary_{hour}")
+            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, explicit_date_from_user, f"summary_{hour}")
         summarizer.summarize_intra_day_tweets(
             summary_file_paths, summary_file_path)
 
         raw_tweet_file_paths = get_raw_tweet_file_paths(
-            summarizer.topic, SUMMRAY_DATE, hour - 6, hour)
+            summarizer.topic, explicit_date_from_user, hour - 3, hour)
         enriched_summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, SUMMRAY_DATE, f"summary_{hour}_enriched")
-        summarizer.enrich_daily_summary(
+            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, explicit_date_from_user, f"summary_{hour}_enriched")
+        summarizer.enrich_tweet_summary(
             raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
 
 info(f"Daily tweet summary finished")

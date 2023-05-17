@@ -2,16 +2,25 @@ import json
 import os
 from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
-from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, OpenaiModelVersion
-from utils.Logging import info
+from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
+from utils.Logging import info, error
 from utils.TweetSummaryEnricher import TweetSummaryEnricher
+import numpy as np
 
 
 class TweetSummarizer:
 
-    def __init__(self, master_folder, topic):
+    def __init__(self, master_folder, topic: TwitterTopic):
         self.master_folder = master_folder
         self.topic = topic
+        if topic == TwitterTopic.FINANCE.value:
+            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.FINANCE.value
+        elif topic == TwitterTopic.TECHNOLOGY.value:
+            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.TECHNOLOGY.value
+        elif topic == TwitterTopic.CRYPTO_CURRENCY.value:
+            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.CRYPTO_CURRENCY.value
+        else:
+            assert False, f"unsupported topic {topic}"
         self.running = False
         self.openaiApiManager = OpenaiGptApiManager(
             OpenaiModelVersion.GPT3_5.value)
@@ -60,12 +69,13 @@ class TweetSummarizer:
             os.makedirs(os.path.dirname(output_file_path))
         with open(output_file_path, 'a') as f:
             for summary_item in aggregated_summary_item_list:
-                f.write(summary_item)
+                clean_summary_item = clean_summary(summary_item)
+                f.write(clean_summary_item)
                 f.write('\n')
         info(
             f"{self.topic} intra day summary has been writen to {output_file_path}")
 
-    def enrich_daily_summary(self, raw_tweet_file_paths, summary_file_path, output_file_path):
+    def enrich_tweet_summary(self, raw_tweet_file_paths, summary_file_path, output_file_path):
         info(
             f"start enriching intraday day {self.topic} tweet summary from {raw_tweet_file_paths} for {summary_file_path}")
         text_to_tweet = {}
@@ -97,9 +107,34 @@ class TweetSummarizer:
                     unwound_url = json_data['tweet']['entities']['urls'][0]['unwound_url']
                 except KeyError:
                     unwound_url = ""
-                source_url = f"https://twitter.com/{json_data['authorMetadata']['username']}/status/{json_data['tweet']['id']}"
-                text_to_tweet[clean_text] = {
-                    "unwound_url": unwound_url, 'tweet_url': source_url}
+                try:
+                    hash_tags = [t['tag']
+                                 for t in json_data['tweet']['entities']['hashtags']]
+                except KeyError:
+                    hash_tags = []
+                try:
+                    author_follower_count = json_data['authorMetadata']['public_metrics']['followers_count']
+                except KeyError:
+                    author_follower_count = 0
+
+                try:
+                    source_url = f"https://twitter.com/{json_data['authorMetadata']['username']}/status/{json_data['tweet']['id']}"
+                    text_to_tweet[clean_text] = {
+                        "unwound_url": unwound_url,
+                        'tweet_url': source_url,
+                        'author_follower_count': author_follower_count,
+                        'hash_tags': hash_tags,
+                        'created_at': json_data['tweet']['created_at']
+                    }
+                except KeyError:
+                    error(f"KeyError: {line}")
+                    continue
+                except TypeError:
+                    error(f"TypeError: {line}")
+                    continue
+                except Exception as e:
+                    error(f"Error occurred: {e}. {line}")
+                    continue
 
         info(f"start initializing TweetSummaryEnricher...")
         tagger = TweetSummaryEnricher(list(text_to_tweet.keys()))
@@ -111,8 +146,19 @@ class TweetSummarizer:
                 individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
             unwound_url = text_to_tweet[source_text]['unwound_url']
-            enriched_summary = {"summary": individual_summary, "match_score": match_score,  "source_text": source_text,
-                                "tweet_url": tweet_url, "unwound_url": unwound_url}
+            topic_relavance_score = tagger.get_similarity(
+                self.topic_match_score_seed, individual_summary)
+            enriched_summary = {
+                "summary": individual_summary,
+                "match_score": match_score,
+                "source_text": source_text,
+                "topic_relavance_score": topic_relavance_score,
+                "tweet_url": tweet_url,
+                "unwound_url": unwound_url,
+                "author_follower_count": text_to_tweet[source_text]['author_follower_count'],
+                "hash_tags": text_to_tweet[source_text]['hash_tags'],
+                "created_at": text_to_tweet[source_text]['created_at'],
+            }
             enriched_summary_list.append(enriched_summary)
             info(
                 f'{individual_summary}\n  {tweet_url}\n  {unwound_url}\n  {source_text}')
