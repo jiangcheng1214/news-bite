@@ -50,7 +50,7 @@ class TwitterAPIManager:
         for posted_tweet in posted_tweets:
             similarity = self.tagger.get_similarity(
                 summary_text, posted_tweet)
-            if similarity > 0.8:
+            if similarity > 0.9:
                 warn(
                     f'Tweet is too similar to a previously posted tweet, similarity: {similarity}. posted_tweet: {posted_tweet}, summary_text: {summary_text}')
                 return False
@@ -117,3 +117,8 @@ class TwitterAPIManager:
 
     def get_api(self):
         return self.api
+
+if __name__ == "__main__":
+    api_manager = TwitterAPIManager()
+    api_manager.upload_summary_items(
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230517/summary_24_enriched')
