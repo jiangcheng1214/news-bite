@@ -59,7 +59,7 @@ while True:
             tweet_summarizer.summarize_intra_day_tweets(
                 hourly_summary_file_paths, summary_file_path)
             raw_tweet_file_paths = get_raw_tweet_file_paths(
-                TwitterTopic.FINANCE.value, date, hour - 6, hour)
+                TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
             enriched_summary_file_path = os.path.join(os.path.dirname(
                 __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}_enriched")
             tweet_summarizer.enrich_tweet_summary(
