@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 *.rdb
 src/myenv
+*.zip
+.DS_Store
