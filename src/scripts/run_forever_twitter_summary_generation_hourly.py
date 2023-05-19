@@ -14,6 +14,9 @@ usage: python start_twitter_summary_generation.py
 tweet_summarizers = [TweetSummarizer(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets'), topic.value) for topic in TwitterTopic]
 
+# we aggregate news and post to twitter every 3 hours
+news_summary_hour_interval = 3
+
 
 def get_hourly_summary_file_paths(topic: str, date, start_hour, end_hour):
     summary_file_folder = os.path.join(os.path.dirname(
@@ -40,31 +43,28 @@ while True:
         tweet_summarizer.summarize_hourly_tweets_if_necessary(False)
     now = datetime.datetime.now()
     hour = now.hour
-    if hour == 6 or hour == 12 or hour == 18:
-        today_date = get_today_date()
+    if hour % news_summary_hour_interval == 0:
+        if hour == 0:
+            date = get_yesterday_date()
+            hour = 24
+        else:
+            date = get_today_date()
+
         hourly_summary_file_paths = get_hourly_summary_file_paths(
-            TwitterTopic.FINANCE.value, today_date, hour - 6, hour)
-        if hour == 6:
-            yesterday_date = get_yesterday_date()
-            hourly_summary_file_paths.extend(get_hourly_summary_file_paths(
-                TwitterTopic.FINANCE.value, yesterday_date, 18, 24))
+            TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
 
         summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, today_date, f"summary_{hour}")
-        tweet_summarizer.summarize_intra_day_tweets(
-            hourly_summary_file_paths, summary_file_path)
-
-        raw_tweet_file_paths = get_raw_tweet_file_paths(
-            TwitterTopic.FINANCE.value, today_date, hour - 6, hour)
-        if hour == 6:
-            yesterday_date = get_yesterday_date()
-            raw_tweet_file_paths.extend(get_raw_tweet_file_paths(
-                TwitterTopic.FINANCE.value, yesterday_date, 18, 24))
-        enriched_summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, today_date, f"summary_{hour}_enriched")
-        tweet_summarizer.enrich_daily_summary(
-            raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
-        TwitterAPIManager().upload_daily_summary(enriched_summary_file_path)
+            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}")
+        if not os.path.exists(summary_file_path):
+            tweet_summarizer.summarize_intra_day_tweets(
+                hourly_summary_file_paths, summary_file_path)
+            raw_tweet_file_paths = get_raw_tweet_file_paths(
+                TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
+            enriched_summary_file_path = os.path.join(os.path.dirname(
+                __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}_enriched")
+            tweet_summarizer.enrich_tweet_summary(
+                raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
+            TwitterAPIManager().upload_summary_items(enriched_summary_file_path)
 
     next_hour = (now + datetime.timedelta(hours=1)
                  ).replace(minute=0, second=0, microsecond=0)
