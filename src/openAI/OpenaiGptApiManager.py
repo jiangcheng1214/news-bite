@@ -1,3 +1,4 @@
+import re
 from openai.error import APIError, InvalidRequestError, OpenAIError
 from openai.embeddings_utils import get_embedding
 from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion
@@ -8,6 +9,7 @@ import time
 import os
 import nltk
 import json
+from typing import List
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -22,15 +24,17 @@ class OpenaiGptApiManager():
             # 4096 tokens for gpt-3.5-turbo
             self.token_size_limit = 4096
             # 60% of the token size limit will be used for the prompt
-            self.token_size_limit_usage_ratio = 0.6
+            self.token_size_limit_usage_ratio_for_summarization = 0.6
+            self.token_size_limit_usage_ratio_for_news_likelihood = 0.3
         elif gpt_model_version == OpenaiModelVersion.GPT4.value:
             self.gpt_model_name = "gpt-4"
             # 4096 tokens for gpt-4
             self.token_size_limit = 8192
             # x of the token size limit will be used for the prompt
-            self.token_size_limit_usage_ratio = 0.7
+            self.token_size_limit_usage_ratio_for_summarization = 0.7
+            self.token_size_limit_usage_ratio_for_news_likelihood = 0.3
 
-    def _gpt35_get_complete_response(self, system_prompt: str, user_prompt: str, num_retries=3):
+    def _get_complete_gpt_response(self, system_prompt: str, user_prompt: str, num_retries=3):
         for i in range(num_retries):
             try:
                 finish_reason = 'null'
@@ -107,7 +111,7 @@ class OpenaiGptApiManager():
                     f"skipping summarizing {len(tweets)} {topic} tweets because it's too short")
                 break
             current_tweet_group = []
-            while tweets and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_tweet_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+            while tweets and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_tweet_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_tweet_group.append(tweets.pop(0))
             target_summary_item_count = int(
                 len(current_tweet_group) * self.summarize_ratio)
@@ -119,7 +123,7 @@ class OpenaiGptApiManager():
             info(
                 f"start summarizing {len(current_tweet_group)} tweets into {target_summary_item_count} items. estimated token size: {estimated_token_size}. ({len(tweets)} tweets left)")
             try:
-                response = self._gpt35_get_complete_response(
+                response = self._get_complete_gpt_response(
                     system_setup_prompt, user_prompt)
                 responses.append(response)
             except Exception as e:
@@ -141,7 +145,7 @@ class OpenaiGptApiManager():
         responses = []
         while len(single_summary_text_list) > 0:
             current_group = []
-            while single_summary_text_list and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+            while single_summary_text_list and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_group.append(single_summary_text_list.pop(0))
             user_prompt_intro = f"Generate a {normalized_topic} news summary with up to 20 bullet points based on following news:\n"
             summary_by_line = '\n'.join(current_group)
@@ -151,7 +155,7 @@ class OpenaiGptApiManager():
             info(
                 f"start merging {len(current_group)} summary items into up to 20 items. estimated token size: {estimated_token_size}. ({len(single_summary_text_list)} tweets left)")
             try:
-                response = self._gpt35_get_complete_response(
+                response = self._get_complete_gpt_response(
                     system_setup_prompt, user_prompt)
                 responses.append(response)
             except Exception as e:
@@ -169,7 +173,7 @@ class OpenaiGptApiManager():
         normalized_topic = topic.replace("_", " ")
         current_group = []
         while 1:
-            while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio:
+            while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_group.append(all_summary_items.pop(0))
             user_prompt_intro = f"Remove repetitive items, filter out items that are not {normalized_topic} news and generate up to 20 news bullet points. Following news items are one item per line:\n"
             summary_by_line = '\n'.join(current_group)
@@ -178,7 +182,7 @@ class OpenaiGptApiManager():
             info(
                 f"start merging {len(current_group)} summary items. Estimated prompt token size: {estimated_token_size}. ({len(all_summary_items)} summaries left)")
             try:
-                response = self._gpt35_get_complete_response(
+                response = self._get_complete_gpt_response(
                     None, user_prompt)
                 summary_items = response['text'].split('\n')
                 info(
@@ -192,6 +196,78 @@ class OpenaiGptApiManager():
                 error(f"Error occurred: {e}")
                 time.sleep(5)
 
+    def extract_quality_news_tweets(self, raw_tweet_file_paths: List[str], topic: str, output_file_path: str):
+        if os.path.exists(output_file_path):
+            info(
+                f"extract_quality_news_tweets already exists: {output_file_path}")
+            return
+        tweets = []
+        for raw_tweet_file_path in raw_tweet_file_paths:
+            if not os.path.exists(raw_tweet_file_path):
+                error(
+                    f"extract_quality_news_tweets file not found: {raw_tweet_file_path}")
+                continue
+            for tweet_line in open(raw_tweet_file_path, 'r').readlines():
+                tweet = json.loads(tweet_line)
+                try:
+                    follower_count = tweet['authorMetadata']['public_metrics']['followers_count']
+                    if follower_count < 500000:
+                        continue
+                    tweet_text = tweet['tweet']['text']
+                    clean_tweet_text = re.sub(
+                        r"http\S+", "", tweet_text)
+                    clean_tweet_text = re.sub(
+                        r'\s+', ' ', clean_tweet_text).strip()
+                    tweet_id = tweet['tweet']['id']
+                    tweets.append((tweet_id, clean_tweet_text))
+                except Exception as e:
+                    error(f"Error occurred: {e}")
+                    continue
+        info(
+            f"extract_quality_news_tweets: {len(tweets)} tweets will be processed")
+        user_prompt_intro = f"You will be given a list in (id : text) format, calculate the likelihood between 0 and 1 of the text being a {topic} news and output a list in (id : likelihood : text) format:\n"
+        user_prompt_intro_token_size = len(
+            nltk.word_tokenize(user_prompt_intro))
+
+        result = []
+        while len(tweets) > 0:
+            current_group = []
+            while tweets and user_prompt_intro_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_news_likelihood:
+                tweet = tweets.pop(0)
+                current_group.append(f"{tweet[0]}:{tweet[1]}")
+            summary_by_line = '\n'.join(current_group)
+            user_prompt = f"{user_prompt_intro}{summary_by_line}"
+            estimated_token_size = len(nltk.word_tokenize(user_prompt))
+            info(
+                f"start processing {len(current_group)} tweets. estimated token size: {estimated_token_size}. ({len(tweets)} tweets left)")
+            try:
+                response = self._get_complete_gpt_response(None, user_prompt)
+                result.extend(response['text'].split('\n'))
+            except Exception as e:
+                error(f"Error occurred: {e}")
+                time.sleep(5)
+        try:
+            sorted_result = sorted(
+                result, key=lambda x: float(x.split(':')[1]), reverse=True)
+            if not os.path.exists(os.path.dirname(output_file_path)):
+                os.makedirs(os.path.dirname(output_file_path))
+            with open(output_file_path, 'w') as f:
+                for line in sorted_result:
+                    try:
+                        parts = line.split(':')
+                        json_data = {
+                            'id': parts[0].strip(),
+                            'quality': parts[1].strip(),
+                            'text': ' '.join(parts[2:]).strip()
+                        }
+                        f.write(f"{json.dumps(json_data)}\n")
+                    except Exception as e:
+                        error(f"Error occurred: {e}")
+                        continue
+            info(f"extract_quality_news_tweets: {output_file_path} saved")
+        except Exception as e:
+            error(f"Error occurred: {e}")
+
     def get_embedding(self, text: str):
         return get_embedding(text, self.embedding_model)
 
@@ -200,9 +276,12 @@ if __name__ == "__main__":
     # models = openai.Model.list()
     # print([m.id for m in models.data])
     openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
-    tweets = open(os.path.join(os.path.dirname(__file__),
-                  '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
-    info(openaiGP35ApiManager.summarize_tweets(
-        tweets, TwitterTopic.CRYPTO_CURRENCY.value))
+    # tweets = open(os.path.join(os.path.dirname(__file__),
+    #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
+    # info(openaiGP35ApiManager.summarize_tweets(
+    #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
+    quality_tweets_output_path = '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23'
+    openaiGP35ApiManager.extract_quality_news_tweets(
+        ['/Users/chengjiang/Dev/NewsBite/data/tweets/finance/20230519/raw_23'], TwitterTopic.FINANCE.value, quality_tweets_output_path)
 
     pass

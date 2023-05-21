@@ -163,7 +163,7 @@ class TweetSummarizer:
             info(
                 f'{individual_summary}\n  {tweet_url}\n  {unwound_url}\n  {source_text}')
         enriched_summary_list = sorted(
-            enriched_summary_list, key=lambda x: x['match_score'], reverse=True)
+            enriched_summary_list, key=lambda x: x['topic_relavance_score'], reverse=True)
         with open(output_file_path, 'a') as f:
             for enriched_summary in enriched_summary_list:
                 f.write(json.dumps(enriched_summary))

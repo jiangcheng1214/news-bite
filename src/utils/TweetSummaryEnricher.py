@@ -48,12 +48,6 @@ class TweetSummaryEnricher():
             text = text[:300]
         if text in self.embedding_dict:
             return self.embedding_dict[text]
-        # embedding_dict = self.redis_client.get('tweet_embedding_dict')
-        # if embedding_dict is None:
-        #     embedding_dict = {}
-        # else:
-        #     embedding_dict = json.loads(embedding_dict)
-        # if text not in embedding_dict:
         if self.last_request_time is not None:
             time_elapsed = time.time() - self.last_request_time
             if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
