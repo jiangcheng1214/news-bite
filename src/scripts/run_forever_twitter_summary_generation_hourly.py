@@ -3,7 +3,7 @@ import os
 from utils.Utilities import TwitterTopic, get_yesterday_date, get_today_date
 from utils.TweetSummarizer import TweetSummarizer
 from twitter.TwitterAPIManager import TwitterAPIManager
-from utils.Logging import info
+from utils.Logging import info, error
 import time
 
 """
@@ -43,13 +43,12 @@ while True:
         tweet_summarizer.summarize_hourly_tweets_if_necessary(False)
     now = datetime.datetime.now()
     hour = now.hour
+    if hour == 0:
+        date = get_yesterday_date()
+        hour = 24
+    else:
+        date = get_today_date()
     if hour % news_summary_hour_interval == 0:
-        if hour == 0:
-            date = get_yesterday_date()
-            hour = 24
-        else:
-            date = get_today_date()
-
         hourly_summary_file_paths = get_hourly_summary_file_paths(
             TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
 
@@ -65,6 +64,17 @@ while True:
             tweet_summarizer.enrich_tweet_summary(
                 raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
             TwitterAPIManager().upload_summary_items(enriched_summary_file_path)
+
+    last_hourly_raw_tweet_file_paths = get_raw_tweet_file_paths(
+        TwitterTopic.FINANCE.value, date, hour - 1, hour)
+    try:
+        tweet_news_file_path = os.path.join(os.path.dirname(
+            __file__),  '..', '..', 'data', 'tweet_extracted_news', TwitterTopic.FINANCE.value, date, f"news_{hour}")
+        tweet_summarizer.openaiApiManager.extract_quality_news_tweets(
+            last_hourly_raw_tweet_file_paths, TwitterTopic.FINANCE.value, tweet_news_file_path)
+        TwitterAPIManager().react_to_quality_tweets_from_file(tweet_news_file_path)
+    except Exception as e:
+        error(f"Failed to extract quality news tweets: {e}")
 
     next_hour = (now + datetime.timedelta(hours=1)
                  ).replace(minute=0, second=0, microsecond=0)
