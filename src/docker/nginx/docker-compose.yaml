@@ -1,0 +1,26 @@
+version: '3'
+services:
+  nginx_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "6000:80"
+    volumes:
+      # - ./www:/var/www
+      #- app_data:/var/www  # 将新的卷挂载到/var/www
+      - ./www:/var/www
+        #- app_data:/var/www  # 将新的卷挂载到/var/www
+      - src_shared_data:/var/www/data  # 将新的卷挂载到/data
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf
+
+
+    restart: always
+
+volumes:
+  src_shared_data:
+    external: true
+networks:
+  default:
+    name: mynetwork
+    external: true
