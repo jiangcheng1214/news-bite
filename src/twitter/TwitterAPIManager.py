@@ -110,7 +110,7 @@ class TwitterAPIManager:
         cleaned_text = re.sub(r'^\"|\"$', '', cleaned_text)
         return cleaned_text
 
-    def react_to_quality_tweets_from_file(self, quality_tweets_file, limit=10):
+    def react_to_quality_tweets_from_file(self, quality_tweets_file, limit=20):
         if not os.path.exists(quality_tweets_file):
             error(
                 f"Quality tweets file {quality_tweets_file} does not exist")
@@ -126,10 +126,10 @@ class TwitterAPIManager:
                 quality = data['quality']
                 if float(quality) < 0.5:
                     continue
-                reply_text = f'🤖 Thanks for your tweet! The AI algorithm by @FinancialNewsAI has recognized your tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 100} (±10%) finance-related tweets in the last 120 mins. 🌟 We truly appreciate your valuable content.'
+                reply_text = f'🤖 Thanks for your tweet! The AI algorithm by @FinancialNewsAI has recognized your tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 50} (±5%) finance-related tweets in the last 120 mins. 🌟 Like/retweet this tweet or follow us for more automatic AI endorsements.'
                 self.like_and_reply_to_tweet(tweet_id, reply_text)
                 info(f"Reacted to tweet {tweet_id}")
-                time.sleep(10)
+                time.sleep(15)
                 reacted_tweet_ids.append(tweet_id)
 
     def like_and_reply_to_tweet(self, tweet_id, reply_text):
