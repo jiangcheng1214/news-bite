@@ -12,8 +12,8 @@ MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING = 30
 
 TWEET_LENGTH_CHAR_LIMIT = 280
 TWEET_DEFAULT_POST_LIMIT = 5
-TWEET_MATCH_SCORE_THRESHOLD_FOR_URL_APPENDING = 0.88
-TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD = 0.8
+TWEET_MATCH_SCORE_THRESHOLD_FOR_URL_APPENDING = 0.9
+TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD = 0.75
 TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD = 0.9
 
 DEFAULT_REDIS_CACHE_EXPIRE_SEC = 60 * 60 * 24 * 7  # 7 days
@@ -76,7 +76,7 @@ def get_previous_day_date(yyyymmdd: str):
     return previous_day.strftime(date_format)
 
 
-def get_clean_tweet_text(raw_text):
+def get_clean_text(raw_text):
     new_line_free_text = raw_text.replace('\n', ' ')
     link_free_text = re.sub(r'http\S+', '', new_line_free_text)
     link_free_clean_text = re.sub(' +', ' ', link_free_text)

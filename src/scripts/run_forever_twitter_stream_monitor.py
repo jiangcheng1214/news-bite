@@ -5,8 +5,8 @@ from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
-from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX
-from utils.TweetSummaryEnricher import TweetSummaryEnricher
+from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX, get_clean_text
+from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 
 """
 This script is used to monitor twitter stream and save tweets to file.
@@ -31,6 +31,7 @@ monitored_topics = [TwitterTopic.FINANCE.value]
 tweet_count_by_topic = {topic: 0 for topic in monitored_topics}
 enricher = TweetSummaryEnricher()
 
+
 def callback(tweet, matching_topic):
     global complete_tweets_received_by_topic, tweet_count_by_topic, total_received
     author_metadata = user_looker.lookup_user_metadata(tweet['author_id'])
@@ -49,7 +50,8 @@ def callback(tweet, matching_topic):
     raw_tweets_file_writer_by_topic[matching_topic].append(
         json.dumps(complete_tweet_received))
     # cache the tweet text embedding for later use
-    enricher.get_text_embedding(tweet['text'])
+    clean_tweet_text = get_clean_text(tweet['text'])
+    enricher.get_text_embedding(clean_tweet_text)
 
 
 streamer = TwitterFilteredStreamer(key, monitored_topics, callback)

@@ -2,9 +2,9 @@ import json
 import os
 from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
-from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_tweet_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
+from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
 from utils.Logging import info, error
-from utils.TweetSummaryEnricher import TweetSummaryEnricher
+from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 import numpy as np
 
 
@@ -99,7 +99,7 @@ class TweetSummarizer:
                 continue
             for line in open(raw_tweet_file_path).readlines():
                 json_data = json.loads(line)
-                clean_text = get_clean_tweet_text(json_data["tweet"]['text'])
+                clean_text = get_clean_text(json_data["tweet"]['text'])
                 if len(clean_text) < MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING:
                     info(f'{clean_text} is ignored')
                     continue
@@ -142,7 +142,7 @@ class TweetSummarizer:
         enriched_summary_list = []
         for individual_summary in summary_list:
             info(f"enriching {individual_summary}")
-            source_text, match_score = tagger.find_most_similar_url_uisng_openai_embedding(
+            source_text, match_score = tagger.find_best_match_and_score(
                 individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
             unwound_url = text_to_tweet[source_text]['unwound_url']
@@ -197,7 +197,7 @@ class TweetSummarizer:
                 author_name = raw_json['authorMetadata']['name']
                 followers_count = raw_json['authorMetadata']['public_metrics']['followers_count']
                 text = raw_json['tweet']['text']
-                clean_tweet_text = get_clean_tweet_text(text)
+                clean_tweet_text = get_clean_text(text)
                 clean_tweets.append(
                     f"({author_name}) ({followers_count}) {clean_tweet_text}")
             file_index = file_path.split(RAW_TWEET_FILE_PREFIX)[-1]

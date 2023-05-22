@@ -1,7 +1,7 @@
 import re
 from openai.error import APIError, InvalidRequestError, OpenAIError
 from openai.embeddings_utils import get_embedding
-from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion
+from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion, get_clean_text
 from utils.Logging import info, warn, error
 from dotenv import load_dotenv
 import openai
@@ -211,13 +211,10 @@ class OpenaiGptApiManager():
                 tweet = json.loads(tweet_line)
                 try:
                     follower_count = tweet['authorMetadata']['public_metrics']['followers_count']
-                    if follower_count < 500000:
+                    if follower_count > 500000:
                         continue
                     tweet_text = tweet['tweet']['text']
-                    clean_tweet_text = re.sub(
-                        r"http\S+", "", tweet_text)
-                    clean_tweet_text = re.sub(
-                        r'\s+', ' ', clean_tweet_text).strip()
+                    clean_tweet_text = get_clean_text(tweet_text)
                     tweet_id = tweet['tweet']['id']
                     tweets.append((tweet_id, clean_tweet_text))
                 except Exception as e:
@@ -269,6 +266,9 @@ class OpenaiGptApiManager():
             error(f"Error occurred: {e}")
 
     def get_embedding(self, text: str):
+        if text != get_clean_text(text):
+            raise AssertionError(
+                f"get_embedding: text is not clean: {text} => {get_clean_text(text)}")
         return get_embedding(text, self.embedding_model)
 
 
@@ -280,8 +280,7 @@ if __name__ == "__main__":
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
     #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
-    quality_tweets_output_path = '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23'
-    openaiGP35ApiManager.extract_quality_news_tweets(
-        ['/Users/chengjiang/Dev/NewsBite/data/tweets/finance/20230519/raw_23'], TwitterTopic.FINANCE.value, quality_tweets_output_path)
-
+    # quality_tweets_output_path = '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23'
+    # openaiGP35ApiManager.extract_quality_news_tweets(
+    #     ['/Users/chengjiang/Dev/NewsBite/data/tweets/finance/20230519/raw_23'], TwitterTopic.FINANCE.value, quality_tweets_output_path)
     pass

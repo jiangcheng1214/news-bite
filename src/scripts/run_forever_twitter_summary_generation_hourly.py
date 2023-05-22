@@ -1,7 +1,7 @@
 import datetime
 import os
 from utils.Utilities import TwitterTopic, get_yesterday_date, get_today_date
-from utils.TweetSummarizer import TweetSummarizer
+from twitter.TweetSummarizer import TweetSummarizer
 from twitter.TwitterAPIManager import TwitterAPIManager
 from utils.Logging import info, error
 import time
@@ -42,6 +42,9 @@ while True:
     for tweet_summarizer in tweet_summarizers:
         tweet_summarizer.summarize_hourly_tweets_if_necessary(False)
     now = datetime.datetime.now()
+    next_hour = (now + datetime.timedelta(hours=1)
+                 ).replace(minute=0, second=0, microsecond=0)
+    sec_until_next_hour = (next_hour - now).seconds
     hour = now.hour
     if hour == 0:
         date = get_yesterday_date()
@@ -76,8 +79,5 @@ while True:
     except Exception as e:
         error(f"Failed to extract quality news tweets: {e}")
 
-    next_hour = (now + datetime.timedelta(hours=1)
-                 ).replace(minute=0, second=0, microsecond=0)
-    time_diff = (next_hour - now).seconds
-    info(f"Seconds until the next hour starts: {time_diff}")
-    time.sleep(time_diff+5)
+    info(f"Seconds until the next hour starts: {sec_until_next_hour}")
+    time.sleep(sec_until_next_hour+5)
