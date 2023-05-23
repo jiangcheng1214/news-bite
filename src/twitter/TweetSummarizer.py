@@ -103,10 +103,25 @@ class TweetSummarizer:
                 if len(clean_text) < MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING:
                     info(f'{clean_text} is ignored')
                     continue
+                external_urls = []
+                video_urls = []
+                image_urls = []
                 try:
-                    unwound_url = json_data['tweet']['entities']['urls'][0]['unwound_url']
+                    urls = json_data['tweet']['entities']['urls']
                 except KeyError:
-                    unwound_url = ""
+                    urls = []
+                for url in urls:
+                    try:
+                        if 'unwound_url' in url:
+                            external_urls.append(url['unwound_url'])
+                        elif 'media_key' in url:
+                            expanded_url = url['expanded_url']
+                            if '/video/' in expanded_url:
+                                video_urls.append(expanded_url)
+                            elif '/photo/' in expanded_url:
+                                image_urls.append(expanded_url)
+                    except KeyError:
+                        pass
                 try:
                     hash_tags = [t['tag']
                                  for t in json_data['tweet']['entities']['hashtags']]
@@ -116,15 +131,21 @@ class TweetSummarizer:
                     author_follower_count = json_data['authorMetadata']['public_metrics']['followers_count']
                 except KeyError:
                     author_follower_count = 0
-
+                try:
+                    attachments = json_data['tweet']['attachments']
+                except KeyError:
+                    attachments = {}
                 try:
                     source_url = f"https://twitter.com/{json_data['authorMetadata']['username']}/status/{json_data['tweet']['id']}"
                     text_to_tweet[clean_text] = {
-                        "unwound_url": unwound_url,
+                        "external_urls": external_urls,
+                        "video_urls": video_urls,
+                        "image_urls": image_urls,
                         'tweet_url': source_url,
                         'author_follower_count': author_follower_count,
                         'hash_tags': hash_tags,
-                        'created_at': json_data['tweet']['created_at']
+                        'created_at': json_data['tweet']['created_at'],
+                        'attachments': attachments
                     }
                 except KeyError:
                     error(f"KeyError: {line}")
@@ -145,7 +166,6 @@ class TweetSummarizer:
             source_text, match_score = tagger.find_best_match_and_score(
                 individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
-            unwound_url = text_to_tweet[source_text]['unwound_url']
             topic_relavance_score = tagger.get_similarity(
                 self.topic_match_score_seed, individual_summary)
             enriched_summary = {
@@ -154,16 +174,18 @@ class TweetSummarizer:
                 "source_text": source_text,
                 "topic_relavance_score": topic_relavance_score,
                 "tweet_url": tweet_url,
-                "unwound_url": unwound_url,
+                "external_urls": text_to_tweet[source_text]['external_urls'],
+                "video_urls": text_to_tweet[source_text]['video_urls'],
+                "image_urls": text_to_tweet[source_text]['image_urls'],
                 "author_follower_count": text_to_tweet[source_text]['author_follower_count'],
                 "hash_tags": text_to_tweet[source_text]['hash_tags'],
                 "created_at": text_to_tweet[source_text]['created_at'],
             }
             enriched_summary_list.append(enriched_summary)
             info(
-                f'{individual_summary}\n  {tweet_url}\n  {unwound_url}\n  {source_text}')
+                f'{individual_summary}\n  {tweet_url}\n  {source_text}')
         enriched_summary_list = sorted(
-            enriched_summary_list, key=lambda x: x['topic_relavance_score'], reverse=True)
+            enriched_summary_list, key=lambda x: (-len(x['video_urls']), -len(x['video_urls']), -x['topic_relavance_score']))
         with open(output_file_path, 'a') as f:
             for enriched_summary in enriched_summary_list:
                 f.write(json.dumps(enriched_summary))

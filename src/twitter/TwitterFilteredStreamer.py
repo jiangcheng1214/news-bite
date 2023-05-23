@@ -1,7 +1,7 @@
 import json
 import time
 from utils.Logging import info
-from typing import Dict
+# from typing import Dict
 from urllib.parse import urlencode
 import requests
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
@@ -9,15 +9,15 @@ from utils.Utilities import TwitterTopic
 from typing import List
 
 
-class TweetStreamData:
-    def __init__(self, data: Dict):
-        self.author_id = data['author_id']
-        self.created_at = data['created_at']
-        self.edit_history_tweet_ids = data['edit_history_tweet_ids']
-        self.entities = data['entities']
-        self.id = data['id']
-        self.lang = data['lang']
-        self.text = data['text']
+# class TweetStreamData:
+#     def __init__(self, data: Dict):
+#         self.author_id = data['author_id']
+#         self.created_at = data['created_at']
+#         self.edit_history_tweet_ids = data['edit_history_tweet_ids']
+#         self.entities = data['entities']
+#         self.id = data['id']
+#         self.lang = data['lang']
+#         self.text = data['text']
 
 
 class TwitterFilteredStreamer:
@@ -34,7 +34,7 @@ class TwitterFilteredStreamer:
         self.rules_url = 'https://api.twitter.com/2/tweets/search/stream/rules'
         # https://developer.twitter.com/en/docs/twitter-api/data-dictionary/object-model/tweet
         response_params = urlencode({
-            'tweet.fields': 'id,author_id,text,created_at,entities,lang',
+            'tweet.fields': 'id,author_id,text,created_at,entities,lang,attachments',
             'user.fields': 'id,username',
         })
         self.stream_url = f'https://api.twitter.com/2/tweets/search/stream?{response_params}'

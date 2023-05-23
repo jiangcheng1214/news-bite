@@ -46,7 +46,7 @@ class TweetSummaryEnricher():
         if len(text) > 300:
             warn(f"Text length {len(text)} is longer than 300 chars")
         clean_text = get_clean_text(text)
-        if text in self.embedding_dict:
+        if clean_text in self.embedding_dict:
             return self.embedding_dict[clean_text]
         if self.last_request_time:
             time_elapsed = time.time() - self.last_request_time

@@ -6,7 +6,7 @@ import os
 import redis
 from dotenv import load_dotenv
 from utils.Logging import error, info, warn
-from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD_FOR_URL_APPENDING, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD
+from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, get_clean_text
 import json
 from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 load_dotenv()
@@ -43,6 +43,8 @@ class TwitterAPIManager:
             return False
         if tweet_json_data['topic_relavance_score'] < TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD:
             return False
+        if tweet_json_data['match_score'] < TWEET_MATCH_SCORE_THRESHOLD:
+            return False
         posted_tweets = self.redis_client.get(REDIS_POSTED_TWEETS_KEY)
         if not posted_tweets:
             return True
@@ -60,6 +62,7 @@ class TwitterAPIManager:
         if not os.path.exists(enriched_summary_file_path):
             error(f"Summary file {enriched_summary_file_path} does not exist")
             return
+        info(f"Uploading summary items from {enriched_summary_file_path}")
         post_limit = max_items if max_items else TWEET_DEFAULT_POST_LIMIT
         tweet_to_post = []
         with open(enriched_summary_file_path, 'r') as f:
@@ -69,15 +72,34 @@ class TwitterAPIManager:
                 if self.should_post(data) == False:
                     continue
                 tweet_content = f"{summary_text}".strip()
-                if len(data['unwound_url']) > 0 and data['match_score'] > TWEET_MATCH_SCORE_THRESHOLD_FOR_URL_APPENDING:
+                media_url_added = False
+                if len(data['video_urls']) > 0:
                     try:
-                        url = data['unwound_url']
+                        for media_url in data['video_urls']:
+                            tweet_content = f"{tweet_content}\n{media_url}".strip(
+                            )
+                            media_url_added = True
+                    except Exception as e:
+                        error(f"Error adding video_url {media_url}: {e}")
+                if len(data['image_urls']) > 0:
+                    try:
+                        for media_url in data['image_urls']:
+                            tweet_content = f"{tweet_content}\n{media_url}".strip(
+                            )
+                            media_url_added = True
+                    except Exception as e:
+                        error(f"Error adding image_url {media_url}: {e}")
+
+                if not media_url_added and len(data['external_urls']) > 0:
+                    try:
+                        url = data['external_urls'][0]
                         short_url = self.shorten_url(url)
                         tweet_content = f"{summary_text}\n{short_url}".strip()
                     except Exception as e:
                         error(f"Error shortening url {url}: {e}")
                         continue
                 tweet_to_post.append(tweet_content)
+        info(f"{len(tweet_to_post)} tweets to post")
         tweet_count = 0
         while len(tweet_to_post) > 0 and tweet_count < post_limit:
             tweet_content = tweet_to_post.pop(0)
@@ -91,7 +113,7 @@ class TwitterAPIManager:
                     posted_tweets = []
                 else:
                     posted_tweets = json.loads(posted_tweets)
-                posted_tweets.append(tweet_content)
+                posted_tweets.append(get_clean_text(tweet_content))
                 self.redis_client.set(
                     REDIS_POSTED_TWEETS_KEY, json.dumps(posted_tweets),  ex=DEFAULT_REDIS_CACHE_EXPIRE_SEC)
                 tweet_count += 1
@@ -126,7 +148,7 @@ class TwitterAPIManager:
                 if float(quality) < 0.5:
                     continue
                 try:
-                    reply_text = f'🤖 Thanks for your tweet! The AI algorithm by @FinancialNewsAI has recognized your tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 50} (±5%) finance-related tweets in the last 120 mins. 🌟 Like/retweet this tweet or follow us for more automatic AI endorsements.'
+                    reply_text = f'The AI algorithms by @FinancialNewsAI has recognized this tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 100} (±5%) finance-related tweets in the past 2 hours. DO NOT follow us but LIKE this reply for more AI endorsements. We appreciate your feedback!'
                     self.like_and_reply_to_tweet(tweet_id, reply_text)
                     info(f"Reacted to tweet {tweet_id}")
                     time.sleep(15)
@@ -152,6 +174,6 @@ class TwitterAPIManager:
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_9_enriched')
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_21_enriched')
     # api_manager.react_to_quality_tweets_from_file(
     #     '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23')

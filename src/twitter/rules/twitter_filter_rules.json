@@ -4,7 +4,7 @@
         "tag": "crypto_currency"
     },
     {
-        "value": "(stocks OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR cryptocurrency OR GDP OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR \"stock market\") -\"!\" - \"?\" -\"all time\" -please -plz -pls -retweet -giveaways -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR GDP OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking) -\"!\" - \"?\" -\"all time\" -please -plz -pls -retweet -giveaways -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "finance"
     },
     {
@@ -14,5 +14,9 @@
     {
         "value": "(software OR wearables OR \"AI\" OR \"chatgpt\" OR \"openai\" OR \"tech companies\" OR \"data privacy\" OR \"space tech\" OR agritech OR robotics OR nanotechnology OR \"quantum computing\" OR \"augmented reality\" OR \"virtual reality\" OR \"cloud computing\") -#giveaway -#giveaways -giveaway -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology"
+    },
+    {
+        "value": "(blackpink OR #blackpink or \"jennie kim\" OR \"kim jennie\" OR lalisa OR jisoo OR rosé OR #TAEHYUNG)",
+        "tag": "entertainment"
     }
 ]

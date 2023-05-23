@@ -1,7 +1,7 @@
 import re
 from openai.error import APIError, InvalidRequestError, OpenAIError
 from openai.embeddings_utils import get_embedding
-from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion, get_clean_text
+from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion, get_clean_text, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD
 from utils.Logging import info, warn, error
 from dotenv import load_dotenv
 import openai
@@ -89,8 +89,9 @@ class OpenaiGptApiManager():
             except OpenAIError as e:
                 error(f"OpenAIError occurred: {e}")
                 time.sleep(5)
-        raise Exception(
+        error(
             f"OpenAI API Error: Failed to get response after {num_retries} retries")
+        return None
 
     def summarize_tweets(self, tweets, topic: str):
         normalized_topic = topic.replace("_", " ")
@@ -125,7 +126,8 @@ class OpenaiGptApiManager():
             try:
                 response = self._get_complete_gpt_response(
                     system_setup_prompt, user_prompt)
-                responses.append(response)
+                if response:
+                    responses.append(response)
             except Exception as e:
                 error(f"Error occurred: {e}")
                 time.sleep(5)
@@ -157,7 +159,8 @@ class OpenaiGptApiManager():
             try:
                 response = self._get_complete_gpt_response(
                     system_setup_prompt, user_prompt)
-                responses.append(response)
+                if response:
+                    responses.append(response)
             except Exception as e:
                 error(f"Error occurred: {e}")
                 time.sleep(5)
@@ -184,14 +187,18 @@ class OpenaiGptApiManager():
             try:
                 response = self._get_complete_gpt_response(
                     None, user_prompt)
-                summary_items = response['text'].split('\n')
-                info(
-                    f"summary items merged {len(current_group)} => {len(summary_items)} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
-                current_group = []
-                if len(all_summary_items) > 0:
-                    all_summary_items += summary_items
+                if response:
+                    summary_items = response['text'].split('\n')
+                    info(
+                        f"summary items merged {len(current_group)} => {len(summary_items)} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+                    current_group = []
+                    if len(all_summary_items) > 0:
+                        all_summary_items += summary_items
+                    else:
+                        return summary_items
                 else:
-                    return summary_items
+                    error("Error occurred: response is None")
+                    time.sleep(5)
             except Exception as e:
                 error(f"Error occurred: {e}")
                 time.sleep(5)
@@ -239,13 +246,22 @@ class OpenaiGptApiManager():
                 f"start processing {len(current_group)} tweets. estimated token size: {estimated_token_size}. ({len(tweets)} tweets left)")
             try:
                 response = self._get_complete_gpt_response(None, user_prompt)
-                result.extend(response['text'].split('\n'))
+                if response:
+                    result.extend(response['text'].split('\n'))
+                else:
+                    error("Error occurred: response is None")
+                    time.sleep(5)
             except Exception as e:
                 error(f"Error occurred: {e}")
                 time.sleep(5)
         try:
+            filtered_result = []
+            for line in result:
+                parts = line.split(':')
+                if len(parts) >= 3:
+                    filtered_result.append(line)
             sorted_result = sorted(
-                result, key=lambda x: float(x.split(':')[1]), reverse=True)
+                filtered_result, key=lambda x: float(x.split(':')[1]), reverse=True)
             if not os.path.exists(os.path.dirname(output_file_path)):
                 os.makedirs(os.path.dirname(output_file_path))
             with open(output_file_path, 'w') as f:
@@ -275,7 +291,7 @@ class OpenaiGptApiManager():
 if __name__ == "__main__":
     # models = openai.Model.list()
     # print([m.id for m in models.data])
-    openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
+    # openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
     # tweets = open(os.path.join(os.path.dirname(__file__),
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
