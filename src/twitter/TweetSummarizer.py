@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
 from utils.Logging import info, error
+from utils.TextEmbeddingCache import TextEmbeddingCache
 from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 import numpy as np
 
@@ -166,7 +167,7 @@ class TweetSummarizer:
             source_text, match_score = tagger.find_best_match_and_score(
                 individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
-            topic_relavance_score = tagger.get_similarity(
+            topic_relavance_score = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 self.topic_match_score_seed, individual_summary)
             enriched_summary = {
                 "summary": individual_summary,
@@ -185,7 +186,7 @@ class TweetSummarizer:
             info(
                 f'{individual_summary}\n  {tweet_url}\n  {source_text}')
         enriched_summary_list = sorted(
-            enriched_summary_list, key=lambda x: (-len(x['video_urls']), -len(x['video_urls']), -x['topic_relavance_score']))
+            enriched_summary_list, key=lambda x: (-len(x['video_urls']), -len(x['image_urls']), -len(x['external_urls']), -x['topic_relavance_score']))
         with open(output_file_path, 'a') as f:
             for enriched_summary in enriched_summary_list:
                 f.write(json.dumps(enriched_summary))

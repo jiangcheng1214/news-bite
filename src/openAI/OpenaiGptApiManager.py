@@ -1,7 +1,6 @@
 import re
 from openai.error import APIError, InvalidRequestError, OpenAIError
-from openai.embeddings_utils import get_embedding
-from utils.Utilities import OpenaiFinishReason, TwitterTopic, OpenaiModelVersion, get_clean_text, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD
+from utils.Utilities import OpenaiFinishReason, OpenaiModelVersion
 from utils.Logging import info, warn, error
 from dotenv import load_dotenv
 import openai
@@ -17,7 +16,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 class OpenaiGptApiManager():
     def __init__(self, gpt_model_version: OpenaiModelVersion):
         self.API = openai
-        self.embedding_model = "text-embedding-ada-002"
+        # self.embedding_model = "text-embedding-ada-002"
         self.summarize_ratio = 0.1
         if gpt_model_version == OpenaiModelVersion.GPT3_5.value:
             self.gpt_model_name = "gpt-3.5-turbo"
@@ -203,90 +202,6 @@ class OpenaiGptApiManager():
                 error(f"Error occurred: {e}")
                 time.sleep(5)
 
-    def extract_quality_news_tweets(self, raw_tweet_file_paths: List[str], topic: str, output_file_path: str):
-        if os.path.exists(output_file_path):
-            info(
-                f"extract_quality_news_tweets already exists: {output_file_path}")
-            return
-        tweets = []
-        for raw_tweet_file_path in raw_tweet_file_paths:
-            if not os.path.exists(raw_tweet_file_path):
-                error(
-                    f"extract_quality_news_tweets file not found: {raw_tweet_file_path}")
-                continue
-            for tweet_line in open(raw_tweet_file_path, 'r').readlines():
-                tweet = json.loads(tweet_line)
-                try:
-                    follower_count = tweet['authorMetadata']['public_metrics']['followers_count']
-                    if follower_count > 500000:
-                        continue
-                    tweet_text = tweet['tweet']['text']
-                    clean_tweet_text = get_clean_text(tweet_text)
-                    tweet_id = tweet['tweet']['id']
-                    tweets.append((tweet_id, clean_tweet_text))
-                except Exception as e:
-                    error(f"Error occurred: {e}")
-                    continue
-        info(
-            f"extract_quality_news_tweets: {len(tweets)} tweets will be processed")
-        user_prompt_intro = f"You will be given a list in (id : text) format, calculate the likelihood between 0 and 1 of the text being a {topic} news and output a list in (id : likelihood : text) format:\n"
-        user_prompt_intro_token_size = len(
-            nltk.word_tokenize(user_prompt_intro))
-
-        result = []
-        while len(tweets) > 0:
-            current_group = []
-            while tweets and user_prompt_intro_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_news_likelihood:
-                tweet = tweets.pop(0)
-                current_group.append(f"{tweet[0]}:{tweet[1]}")
-            summary_by_line = '\n'.join(current_group)
-            user_prompt = f"{user_prompt_intro}{summary_by_line}"
-            estimated_token_size = len(nltk.word_tokenize(user_prompt))
-            info(
-                f"start processing {len(current_group)} tweets. estimated token size: {estimated_token_size}. ({len(tweets)} tweets left)")
-            try:
-                response = self._get_complete_gpt_response(None, user_prompt)
-                if response:
-                    result.extend(response['text'].split('\n'))
-                else:
-                    error("Error occurred: response is None")
-                    time.sleep(5)
-            except Exception as e:
-                error(f"Error occurred: {e}")
-                time.sleep(5)
-        try:
-            filtered_result = []
-            for line in result:
-                parts = line.split(':')
-                if len(parts) >= 3:
-                    filtered_result.append(line)
-            sorted_result = sorted(
-                filtered_result, key=lambda x: float(x.split(':')[1]), reverse=True)
-            if not os.path.exists(os.path.dirname(output_file_path)):
-                os.makedirs(os.path.dirname(output_file_path))
-            with open(output_file_path, 'w') as f:
-                for line in sorted_result:
-                    try:
-                        parts = line.split(':')
-                        json_data = {
-                            'id': parts[0].strip(),
-                            'quality': parts[1].strip(),
-                            'text': ' '.join(parts[2:]).strip()
-                        }
-                        f.write(f"{json.dumps(json_data)}\n")
-                    except Exception as e:
-                        error(f"Error occurred: {e}")
-                        continue
-            info(f"extract_quality_news_tweets: {output_file_path} saved")
-        except Exception as e:
-            error(f"Error occurred: {e}")
-
-    def get_embedding(self, text: str):
-        if text != get_clean_text(text):
-            raise AssertionError(
-                f"get_embedding: text is not clean: {text} => {get_clean_text(text)}")
-        return get_embedding(text, self.embedding_model)
-
 
 if __name__ == "__main__":
     # models = openai.Model.list()
@@ -296,7 +211,4 @@ if __name__ == "__main__":
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
     #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
-    # quality_tweets_output_path = '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23'
-    # openaiGP35ApiManager.extract_quality_news_tweets(
-    #     ['/Users/chengjiang/Dev/NewsBite/data/tweets/finance/20230519/raw_23'], TwitterTopic.FINANCE.value, quality_tweets_output_path)
     pass

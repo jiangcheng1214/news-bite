@@ -5,10 +5,10 @@ import tweepy
 import os
 import redis
 from dotenv import load_dotenv
+from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
-from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, get_clean_text
+from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, get_clean_text, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD
 import json
-from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 load_dotenv()
 
 
@@ -16,7 +16,6 @@ class TwitterAPIManager:
     def __init__(self):
         self.api = self.create_api()
         self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
-        self.tagger = TweetSummaryEnricher()
 
     def create_api(self):
         consumer_key = os.getenv("TWITTER_POSTING_ACCOUNT_CONSUMER_API_KEY")
@@ -50,7 +49,7 @@ class TwitterAPIManager:
             return True
         posted_tweets = json.loads(posted_tweets)
         for posted_tweet in posted_tweets:
-            similarity = self.tagger.get_similarity(
+            similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 summary_text, posted_tweet)
             if similarity > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
                 warn(
@@ -131,22 +130,35 @@ class TwitterAPIManager:
         cleaned_text = re.sub(r'^\"|\"$', '', cleaned_text)
         return cleaned_text
 
-    def react_to_quality_tweets_from_file(self, quality_tweets_file, limit=20):
-        if not os.path.exists(quality_tweets_file):
+    def should_react(self, data):
+        topic_relavance_score = data['topic_relavance_score']
+        match_score = data['match_score']
+        author_follower_count = data['author_follower_count']
+        if float(topic_relavance_score) < TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD or float(match_score) < TWEET_MATCH_SCORE_THRESHOLD:
+            return False
+        if int(author_follower_count) > TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD:
+            return False
+        if len(data['video_urls']) > 0 or len(data['image_urls']) > 0:
+            return False
+        return True
+
+    def react_to_quality_tweets_from_file(self, enriched_tweet_summary_file_path, limit=20):
+        if not os.path.exists(enriched_tweet_summary_file_path):
             error(
-                f"Quality tweets file {quality_tweets_file} does not exist")
+                f"Quality tweets file {enriched_tweet_summary_file_path} does not exist")
             return
+        info(
+            f"Reacting to quality tweets from {enriched_tweet_summary_file_path}")
         reacted_tweet_ids = []
-        with open(quality_tweets_file, 'r') as f:
+        with open(enriched_tweet_summary_file_path, 'r') as f:
             lines = f.readlines()
             for l in lines:
                 if len(reacted_tweet_ids) >= limit:
                     break
                 data = json.loads(l)
-                tweet_id = data['id']
-                quality = data['quality']
-                if float(quality) < 0.5:
+                if not self.should_react(data):
                     continue
+                tweet_id = data['tweet_url'].split('/')[-1]
                 try:
                     reply_text = f'The AI algorithms by @FinancialNewsAI has recognized this tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 100} (±5%) finance-related tweets in the past 2 hours. DO NOT follow us but LIKE this reply for more AI endorsements. We appreciate your feedback!'
                     self.like_and_reply_to_tweet(tweet_id, reply_text)
@@ -156,6 +168,8 @@ class TwitterAPIManager:
                 except Exception as e:
                     error(f"Error reacting to tweet {tweet_id}: {e}")
                     time.sleep(1)
+        info(
+            f"Reacted to {len(reacted_tweet_ids)} tweets successfully.")
 
     def like_and_reply_to_tweet(self, tweet_id, reply_text):
         self.api.create_favorite(tweet_id)
@@ -173,7 +187,7 @@ class TwitterAPIManager:
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
-    api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_21_enriched')
-    # api_manager.react_to_quality_tweets_from_file(
-    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_extracted_news/finance/20230519/news_23')
+    # api_manager.upload_summary_items(
+    # '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_21_enriched')
+    api_manager.react_to_quality_tweets_from_file(
+        '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
