@@ -17,6 +17,7 @@ finance_tweet_summarizer = TweetSummarizer(os.path.join(os.path.dirname(
 # we aggregate news and post to twitter every 3 hours
 news_summary_hour_interval = 3
 
+
 def get_hourly_summary_file_paths(topic: str, date, start_hour, end_hour):
     summary_file_folder = os.path.join(os.path.dirname(
         __file__),  '..', '..', 'data', 'tweets', topic, date)
@@ -66,24 +67,25 @@ while True:
             finance_tweet_summarizer.enrich_tweet_summary(
                 raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
             TwitterAPIManager().upload_summary_items(enriched_summary_file_path)
-        TwitterAPIManager().react_to_quality_tweets_from_file(enriched_summary_file_path)
-    else:
-        try:
-            if hour == 1:
-                date = get_yesterday_date()
-                hour = 24
-            elif hour == 0:
-                date = get_yesterday_date()
-                hour = 23
-            else:
-                date = get_today_date()
-                hour = hour - 1
-            enriched_summary_file_path = os.path.join(os.path.dirname(
-                __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}_enriched")
-            TwitterAPIManager().react_to_quality_tweets_from_file(
-                enriched_summary_file_path)
-        except Exception as e:
-            error(f"Failed to extract quality news tweets: {e}")
+        # TwitterAPIManager().react_to_quality_tweets_from_file(enriched_summary_file_path)
+        TwitterAPIManager().untweet_and_unlike_expired_replies()
+    # else:
+    #     try:
+    #         if hour == 1:
+    #             date = get_yesterday_date()
+    #             hour = 24
+    #         elif hour == 0:
+    #             date = get_yesterday_date()
+    #             hour = 23
+    #         else:
+    #             date = get_today_date()
+    #             hour = hour - 1
+    #         enriched_summary_file_path = os.path.join(os.path.dirname(
+    #             __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}_enriched")
+    #         TwitterAPIManager().react_to_quality_tweets_from_file(
+    #             enriched_summary_file_path)
+    #     except Exception as e:
+    #         error(f"Failed to extract quality news tweets: {e}")
     sec_until_next_start = (next_hour_start_time -
                             datetime.datetime.now()).seconds
     info(f"Seconds until the next hour starts: {sec_until_next_start}")

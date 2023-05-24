@@ -7,8 +7,9 @@ import redis
 from dotenv import load_dotenv
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
-from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, get_clean_text, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD
+from utils.Utilities import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, get_clean_text, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC
 import json
+from datetime import datetime
 load_dotenv()
 
 
@@ -142,6 +143,31 @@ class TwitterAPIManager:
             return False
         return True
 
+    def untweet_and_unlike_expired_replies(self):
+        info("Untweeting and unliking replies")
+        for tweet in tweepy.Cursor(self.api.user_timeline).items():
+            try:
+                second_since_created = int(
+                    time.time() - tweet.created_at.timestamp())
+                if second_since_created < TWEET_REPLY_MAX_AGE_SEC:
+                    continue
+                if tweet.in_reply_to_status_id is None:
+                    continue
+
+                info(f"Untweeting reply to {tweet.in_reply_to_status_id}")
+                self.api.destroy_status(tweet.id)
+                time.sleep(1)
+                try:
+                    info(f"Unliking tweet {tweet.in_reply_to_status_id}")
+                    self.api.destroy_favorite(tweet.in_reply_to_status_id)
+                    time.sleep(1)
+                except Exception as e:
+                    error(
+                        f"Error unliking tweet {tweet.in_reply_to_status_id}: {e}")
+            except Exception as e:
+                error(f"Error untweeting and unliking replies: {e}")
+                continue
+
     def react_to_quality_tweets_from_file(self, enriched_tweet_summary_file_path, limit=20):
         if not os.path.exists(enriched_tweet_summary_file_path):
             error(
@@ -160,7 +186,7 @@ class TwitterAPIManager:
                     continue
                 tweet_id = data['tweet_url'].split('/')[-1]
                 try:
-                    reply_text = f'The AI algorithms by @FinancialNewsAI has recognized this tweet as a high-quality one, ranking it in the top 1% out of {len(lines)* 100} (±5%) finance-related tweets in the past 2 hours. DO NOT follow us but LIKE this reply for more AI endorsements. We appreciate your feedback!'
+                    reply_text = f'The AI algorithms by @FinancialNewsAI recognized this as a high-quality tweet (top 1% out of {len(lines)* 100} finance-related tweets in the past 2 hrs). LIKE for more AI endorsements or it will be removed after 24 hrs. We appreciate your feedback!'
                     self.like_and_reply_to_tweet(tweet_id, reply_text)
                     info(f"Reacted to tweet {tweet_id}")
                     time.sleep(15)
@@ -189,5 +215,10 @@ if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # api_manager.upload_summary_items(
     # '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_21_enriched')
-    api_manager.react_to_quality_tweets_from_file(
-        '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
+    # api_manager.react_to_quality_tweets_from_file(
+    #     '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
+    # for timeline_item in api_manager.get_api().user_timeline(count=500):
+    #     second_since_created = int(
+    #         time.time() - timeline_item.created_at.timestamp())
+    #     info(f"created_at:{timeline_item.created_at}, second_since_created:{second_since_created} {timeline_item.id}, {timeline_item.in_reply_to_status_id}, {timeline_item.favorite_count}, {timeline_item.retweet_count}")
+    api_manager.untweet_and_unlike_expired_replies()
