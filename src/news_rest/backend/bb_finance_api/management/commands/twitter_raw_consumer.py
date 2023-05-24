@@ -11,12 +11,11 @@ class Command(BaseCommand):
 
         def callback(ch, method, properties, body):
             body = json.loads(body)
-            data = json.loads(body[1])
-            topic_split = body[0].split(":")
-            if len(topic_split) >= 2:
-                topic = topic_split[1]
-            else:
-                topic = ""
+            data = body[1]
+            topic = body[0]
+
+            self.stdout.write(self.style.SUCCESS(topic))
+            self.stdout.write(self.style.SUCCESS(data))
 
             # 提取tweet和author_metadata数据
             tweet_data = data['tweet']
@@ -54,5 +53,7 @@ class Command(BaseCommand):
         rabbitmq_consumer = RabbitMQConsumer()
         rabbitmq_consumer.declare_queue(queue_name)
         rabbitmq_consumer.consume(queue_name, callback)
+
+
 
 
