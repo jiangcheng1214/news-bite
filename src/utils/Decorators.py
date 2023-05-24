@@ -3,7 +3,7 @@ import json
 from functools import wraps
 from utils.RabbitMQProducer import RabbitMQProducer
 
-def rabbitmq_decorator(queue_name,is_json=False):
+def rabbitmq_decorator(queue_name):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

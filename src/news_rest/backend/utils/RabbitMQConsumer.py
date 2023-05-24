@@ -2,8 +2,9 @@ import pika
 
 class RabbitMQConsumer:
     def __init__(self, host='localhost'):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host,virtual_host='/'))
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host))
         self.channel = self.connection.channel()
+        self.channel.basic_qos(prefetch_count=10)
 
     def declare_queue(self, queue_name):
         self.channel.queue_purge(queue_name)  # 清空指定队列的所有消息

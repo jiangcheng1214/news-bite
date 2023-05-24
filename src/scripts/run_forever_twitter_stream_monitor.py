@@ -1,6 +1,7 @@
 import json
 import os
 from dotenv import load_dotenv
+from utils.Decorators import rabbitmq_decorator
 from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
@@ -31,7 +32,7 @@ monitored_topics = [TwitterTopic.FINANCE.value]
 tweet_count_by_topic = {topic: 0 for topic in monitored_topics}
 enricher = TweetSummaryEnricher()
 
-
+# @rabbitmq_decorator('twitter_raw_data')
 def callback(tweet, matching_topic):
     global complete_tweets_received_by_topic, tweet_count_by_topic, total_received
     author_metadata = user_looker.lookup_user_metadata(tweet['author_id'])
@@ -52,6 +53,7 @@ def callback(tweet, matching_topic):
     # cache the tweet text embedding for later use
     clean_tweet_text = get_clean_text(tweet['text'])
     enricher.get_text_embedding(clean_tweet_text)
+    return [matching_topic, complete_tweet_received]
 
 
 streamer = TwitterFilteredStreamer(key, monitored_topics, callback)
