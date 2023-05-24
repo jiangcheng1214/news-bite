@@ -6,7 +6,7 @@ from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
-from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX, get_clean_text
+from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX, get_clean_text, get_text_embedding
 from twitter.TweetSummaryEnricher import TweetSummaryEnricher
 
 """

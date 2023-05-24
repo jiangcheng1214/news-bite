@@ -36,26 +36,22 @@ def get_raw_tweet_file_paths(topic: str, date, start_hour, end_hour):
     return hourly_summary_file_paths
 
 
-tweet_summarizers = [TweetSummarizer(os.path.join(os.path.dirname(
-    __file__),  '..', '..', 'data', 'tweets'), topic.value) for topic in TwitterTopic]
+finance_tweet_summarizer = TweetSummarizer(os.path.join(os.path.dirname(
+    __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.FINANCE.value)
 
-for summarizer in tweet_summarizers:
-    if summarizer.topic != TwitterTopic.FINANCE.value:
-        # remove this if we want to summarize all topics
-        continue
-    for hour in [3, 6, 9, 12, 15, 18, 21, 24]:
-        summary_file_paths = get_hourly_summary_file_paths(
-            summarizer.topic, explicit_date_from_user, hour - 3, hour)
-        summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, explicit_date_from_user, f"summary_{hour}")
-        summarizer.summarize_intra_day_tweets(
-            summary_file_paths, summary_file_path)
+for hour in [3, 6, 9, 12, 15, 18, 21, 24]:
+    summary_file_paths = get_hourly_summary_file_paths(
+        finance_tweet_summarizer.topic, explicit_date_from_user, hour - 3, hour)
+    summary_file_path = os.path.join(os.path.dirname(
+        __file__),  '..', '..', 'data', 'tweet_summaries', finance_tweet_summarizer.topic, explicit_date_from_user, f"summary_{hour}")
+    finance_tweet_summarizer.summarize_intra_day_tweets(
+        summary_file_paths, summary_file_path)
 
-        raw_tweet_file_paths = get_raw_tweet_file_paths(
-            summarizer.topic, explicit_date_from_user, hour - 3, hour)
-        enriched_summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', summarizer.topic, explicit_date_from_user, f"summary_{hour}_enriched")
-        summarizer.enrich_tweet_summary(
-            raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
+    raw_tweet_file_paths = get_raw_tweet_file_paths(
+        finance_tweet_summarizer.topic, explicit_date_from_user, hour - 3, hour)
+    enriched_summary_file_path = os.path.join(os.path.dirname(
+        __file__),  '..', '..', 'data', 'tweet_summaries', finance_tweet_summarizer.topic, explicit_date_from_user, f"summary_{hour}_enriched")
+    finance_tweet_summarizer.enrich_tweet_summary(
+        raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
 
 info(f"Daily tweet summary finished")
