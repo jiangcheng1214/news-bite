@@ -1,7 +1,6 @@
 import json
 import os
 from dotenv import load_dotenv
-from utils.Decorators import rabbitmq_decorator
 from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer

@@ -1,17 +1,7 @@
 # 定义消费者任务，这里将读取Redis Stream中的数据
 import json
-import redis
 from utils.BufferedRedisWriter import BufferedRedisWriter
 from utils.Utilities import get_current_hour, get_today_date
-
-# 定义Stream的名称
-
-REDISDB = 1
-# 创建一个Celery实例
-# app = Celery('twitter_stream', broker='redis://localhost:6379/'+REDISDB)
-
-# 连接到Redis
-# redis_client = redis.Redis(host='localhost', port=6379, db=REDISDB, )
 
 def consumer_task():
     last_id = '0'  # 从流的开始部分开始读取
@@ -35,7 +25,7 @@ def consumer_task():
             # 更新 last_id 以便下次读取新的消息
             last_id = message_id    
             
-            raw_buffered_writer.master_key +=  tweet['tweet_type']
+            raw_buffered_writer.master_key += tweet['tweet_type']
             raw_buffered_writer.sub_key_prefix = 'raw'
             raw_buffered_writer.filename_date = get_today_date()
             raw_buffered_writer.filename_hour = get_current_hour()
