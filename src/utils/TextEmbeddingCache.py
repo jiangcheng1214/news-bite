@@ -29,10 +29,6 @@ class TextEmbeddingCache:
             self.embedding_dict_cache = {}
         else:
             self.embedding_dict_cache = json.loads(embedding_dict_json_string)
-            if len(self.embedding_dict_cache) > MAX_EMBEDDING_CACHE_SIZE:
-                warn(
-                    f"Embedding cache size {len(self.embedding_dict_cache)} is larger than {MAX_EMBEDDING_CACHE_SIZE}")
-                self.embedding_dict_cache = {}
         self.last_request_time = time.time()
         self.last_save_time = time.time()
 
@@ -45,6 +41,10 @@ class TextEmbeddingCache:
     def embedding_of(self, text):
         clean_text = get_clean_text(text)
         if text not in self.embedding_dict_cache:
+            if len(self.embedding_dict_cache) > MAX_EMBEDDING_CACHE_SIZE:
+                warn(
+                    f"Embedding cache size {len(self.embedding_dict_cache)} is larger than {MAX_EMBEDDING_CACHE_SIZE}")
+                self.embedding_dict_cache = {}
             info(f"Embedding cache miss for {clean_text}")
             time_elapsed = time.time() - self.last_request_time
             if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
