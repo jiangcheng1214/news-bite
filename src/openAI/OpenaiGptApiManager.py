@@ -93,13 +93,12 @@ class OpenaiGptApiManager():
         return None
 
     def summarize_tweets(self, tweets, topic: str):
-        normalized_topic = topic.replace("_", " ")
+        # normalized_topic = topic.replace("_", " ")
         system_setup_prompt = f"As an tweet analyzer, you will perform following tasks:\
-            1. Filter out tweets unrelated to {normalized_topic} \
-            2. Filter out promotional tweets, questions and tweets with 5 or less words \
-            3. Combine similar tweets and extract valuable information into bullet point news-style format \
-            4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
-            The tweets are in a single line format and always start with the author name and their number of followers. \
+            1. Filter out advertisement tweets \
+            2. Combine similar tweets and extract valuable information into bullet point news-style format \
+            3. Prioritize government regulations or official announcements from authoritative sources \
+            Tweet inputs are in the format: (auther name) (author follower count) (tweet content) \
             Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
 
         system_setup_prompt_token_size = len(
@@ -108,14 +107,14 @@ class OpenaiGptApiManager():
         while len(tweets) > 0:
             if len(tweets) < 20:
                 info(
-                    f"skipping summarizing {len(tweets)} {topic} tweets because it's too short")
+                    f"skipping summarizing {len(tweets)} tweets because it's too short")
                 break
             current_tweet_group = []
             while tweets and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_tweet_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_tweet_group.append(tweets.pop(0))
             target_summary_item_count = int(
                 len(current_tweet_group) * self.summarize_ratio)
-            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} most important bullet points without mentioning source:\n"
+            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} news style points:\n"
             tweets_by_line = '\n'.join(current_tweet_group)
             user_prompt = f"{user_prompt_intro}{tweets_by_line}"
             estimated_token_size = system_setup_prompt_token_size + \
@@ -132,52 +131,13 @@ class OpenaiGptApiManager():
                 time.sleep(5)
         return responses
 
-    def aggregate_hourly_tweet_summary(self, single_summary_text_list, topic: str):
-        normalized_topic = topic.replace("_", " ")
-        system_setup_prompt = f"As an hourly news summarizer, your specific tasks are following:\
-                    1. Filter out tweets unrelated to {normalized_topic} \
-                    2. Filter out promotional tweets, questions and tweets with 5 or less words \
-                    3. Combine similar tweets and extract valuable information into bullet point news-style format \
-                    4. Prioritize tweets related to government regulations or official announcements made by authoritative sources \
-                    The tweets are in a single line format and always start with the author name and their number of followers. \
-                    Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
-        system_setup_prompt_token_size = len(
-            nltk.word_tokenize(system_setup_prompt))
-        responses = []
-        while len(single_summary_text_list) > 0:
-            current_group = []
-            while single_summary_text_list and system_setup_prompt_token_size + len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
-                current_group.append(single_summary_text_list.pop(0))
-            user_prompt_intro = f"Generate a {normalized_topic} news summary with up to 20 bullet points based on following news:\n"
-            summary_by_line = '\n'.join(current_group)
-            user_prompt = f"{user_prompt_intro}{summary_by_line}"
-            estimated_token_size = system_setup_prompt_token_size + \
-                len(nltk.word_tokenize(user_prompt))
-            info(
-                f"start merging {len(current_group)} summary items into up to 20 items. estimated token size: {estimated_token_size}. ({len(single_summary_text_list)} tweets left)")
-            try:
-                response = self._get_complete_gpt_response(
-                    system_setup_prompt, user_prompt)
-                if response:
-                    responses.append(response)
-            except Exception as e:
-                error(f"Error occurred: {e}")
-                time.sleep(5)
-        if len(responses) > 1:
-            all_summary_items = []
-            for r in responses:
-                all_summary_items += r['text'].split('\n')
-            return self.merge_summary_items(all_summary_items)
-        assert len(responses) == 1
-        return responses[0]['text'].split('\n')
-
     def merge_summary_items(self, all_summary_items, topic: str):
-        normalized_topic = topic.replace("_", " ")
+        # normalized_topic = topic.replace("_", " ")
         current_group = []
         while 1:
             while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_group.append(all_summary_items.pop(0))
-            user_prompt_intro = f"Remove repetitive items, filter out items that are not {normalized_topic} news and generate up to 20 news bullet points. Following news items are one item per line:\n"
+            user_prompt_intro = f"Remove repetitive items and generate up to 20 news points in the language that easy to understand. Following news are one item per line:\n"
             summary_by_line = '\n'.join(current_group)
             user_prompt = f"{user_prompt_intro}{summary_by_line}"
             estimated_token_size = len(nltk.word_tokenize(user_prompt))

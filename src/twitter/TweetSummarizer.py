@@ -5,8 +5,6 @@ from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
 from utils.Logging import info, error
 from utils.TextEmbeddingCache import TextEmbeddingCache
-from twitter.TweetSummaryEnricher import TweetSummaryEnricher
-import numpy as np
 
 
 class TweetSummarizer:
@@ -158,14 +156,13 @@ class TweetSummarizer:
                     error(f"Error occurred: {e}. {line}")
                     continue
 
-        info(f"start initializing TweetSummaryEnricher...")
-        tagger = TweetSummaryEnricher(list(text_to_tweet.keys()))
+        all_tweets = list(text_to_tweet.keys())
         info(f"start enriching {len(summary_list)} summaries")
         enriched_summary_list = []
         for individual_summary in summary_list:
             info(f"enriching {individual_summary}")
-            source_text, match_score = tagger.find_best_match_and_score(
-                individual_summary)
+            source_text, match_score = TextEmbeddingCache.get_instance().find_best_match_and_score(
+                all_tweets, individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
             topic_relavance_score = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 self.topic_match_score_seed, individual_summary)

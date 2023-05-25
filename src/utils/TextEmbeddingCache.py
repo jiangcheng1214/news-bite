@@ -8,6 +8,7 @@ import openai
 import os
 import redis
 import numpy as np
+from typing import List
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -19,7 +20,8 @@ class TextEmbeddingCache:
 
     def __init__(self):
         assert TextEmbeddingCache._instance is None, "Singleton class"
-        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis_client = redis.Redis(host=os.getenv("REDIS_HOST"), port=os.getenv(
+            "REDIS_PORT"), db=os.getenv("REDIS_DB"), password=os.getenv("REDIS_PASS"))
         self.embedding_model = "text-embedding-ada-002"
         embedding_dict_json_string = self.redis_client.get(
             REDIS_TWEET_EMBEDDING_DICT_KEY)
@@ -60,6 +62,16 @@ class TextEmbeddingCache:
         text2_embedding = self.embedding_of(text2)
         similarity = np.dot(text1_embedding, text2_embedding)
         return similarity
+
+    def find_best_match_and_score(self, candidates: List[str], target: str):
+        best_score = 0
+        best_match = ""
+        for source in candidates:
+            similarity = self.get_text_similarity_score(source, target)
+            if similarity > best_score:
+                best_score = similarity
+                best_match = source
+        return best_match, best_score
 
     def save(self):
         info(
