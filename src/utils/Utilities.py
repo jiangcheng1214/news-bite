@@ -2,39 +2,13 @@ from enum import Enum
 import datetime
 import re
 
-RAW_TWEET_FILE_PREFIX = 'raw_'
-SUM_TWEET_FILE_PREFIX = 'sum_'
-INTRA_DAY_SUMMARY_FILE_PREFIX = 'agg_'
-INTRA_DAY_SUMMARY_ENRICHED_FILE_PREFIX = 'enriched_'
-
-MINIMAL_OPENAI_API_CALL_INTERVAL_SEC = 0.2
-MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING = 30
-MAX_EMBEDDING_CACHE_SIZE = 10000
-
-TWEET_LENGTH_CHAR_LIMIT = 280
-TWEET_DEFAULT_POST_LIMIT = 5
-TWEET_MATCH_SCORE_THRESHOLD = 0.9
-TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD = 0.7
-TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD = 0.9
-TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD = 500000
-
-TWEET_REPLY_MAX_AGE_SEC = 60 * 60 * 24  # 1 day
-
-DEFAULT_REDIS_CACHE_EXPIRE_SEC = 60 * 60 * 24 * 7  # 7 days
-REDIS_POSTED_TWEETS_KEY = 'posted_tweets'
-REDIS_TWEET_EMBEDDING_DICT_KEY = 'tweet_embedding_dict'
-
 
 class TwitterTopic(Enum):
-    FINANCE = 'finance'
-    TECHNOLOGY = 'technology'
-    CRYPTO_CURRENCY = 'crypto_currency'
+    TECHNOLOGY_FINANCE = 'technology_finance'
 
 
 class TwitterTopicMatchScoreSeed(Enum):
-    FINANCE = 'stock market financial news'
-    TECHNOLOGY = 'technology news'
-    CRYPTO_CURRENCY = 'crypto currency news'
+    TECHNOLOGY_FINANCE = 'technology financial news'
 
 
 class OpenaiModelVersion(Enum):

@@ -5,15 +5,14 @@ from typing import List
 
 import requests
 from requests.structures import CaseInsensitiveDict
-from utils.Utilities import TwitterTopic
 
 
 class TwitterFilterRulesManager:
     rules_url = 'https://api.twitter.com/2/tweets/search/stream/rules'
 
-    def __init__(self, api_key: str, topics: List[TwitterTopic]) -> None:
+    def __init__(self, api_key: str, topic: str) -> None:
         self._api_key = api_key
-        self.topics = topics
+        self.topic = topic
         self.rules_file_path = os.path.join(os.path.dirname(
             __file__),  'rules', 'twitter_filter_rules.json')
 
@@ -31,7 +30,7 @@ class TwitterFilterRulesManager:
 
     def update_rules_if_necessary(self):
         active_rules = self.get_active_rules()
-        local_rules = self.get_local_rules(self.topics)
+        local_rules = self.get_local_rules(self.topic)
         if ('data' in active_rules):
             deletion_response = self.delete_all_active_rules(
                 active_rules['data'])
@@ -39,14 +38,14 @@ class TwitterFilterRulesManager:
         setting_rules_response = self.set_rules(local_rules)
         info(f'SetRules response: {setting_rules_response}')
 
-    def get_local_rules(self, topics: List[TwitterTopic]) -> List[dict]:
+    def get_local_rules(self, topic: str) -> List[dict]:
         if not os.path.exists(self.rules_file_path):
             return []
         monitoering_rules = []
         with open(self.rules_file_path, 'r') as f:
             rules = json.load(f)
             for rule in rules:
-                if rule['tag'] in topics:
+                if rule['tag'] == topic:
                     monitoering_rules.append(rule)
         return monitoering_rules
 

@@ -1,19 +1,19 @@
 [
     {
         "value": "(bitcoin OR btc OR #bitcoin OR #btc OR eth2 OR ethereum2 OR ethereum OR eth OR #ethereum OR #ethereum2 OR #eth OR #eth2 OR crypto OR \"crypto currency\" OR \"block chain\" OR blockchain OR #crypto OR #cryptocurrency OR #blockchain) -#airdrop -#airdrops -#giveaway -#giveaways -airdrop -giveaway -retweet -\"like or retweet\" -\"retweet or like\" -\"retweet this\" -\"rt/like\" -\"like/rt\" -\"follow me\" -\"give away\" -\"sign up\" -\"for free\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
-        "tag": "crypto_currency"
+        "tag": "technology_finance"
     },
     {
         "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR GDP OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking) -\"!\" - \"?\" -\"all time\" -please -plz -pls -retweet -giveaways -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
-        "tag": "finance"
+        "tag": "technology_finance"
     },
     {
         "value": "(technology OR \"IT news\" OR \"AI\" OR \"machine learning\" OR \"deep learning\" OR \"neural networks\" OR \"computer vision\" OR cryptocurrency OR blockchain OR cybersecurity OR web3 OR wearables OR SEC OR \"silicon valley\" OR \"programming\") -#giveaway -#giveaways -giveaway -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
-        "tag": "technology"
+        "tag": "technology_finance"
     },
     {
         "value": "(software OR wearables OR \"AI\" OR \"chatgpt\" OR \"openai\" OR \"tech companies\" OR \"data privacy\" OR \"space tech\" OR agritech OR robotics OR nanotechnology OR \"quantum computing\" OR \"augmented reality\" OR \"virtual reality\" OR \"cloud computing\") -#giveaway -#giveaways -giveaway -\"give away\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
-        "tag": "technology"
+        "tag": "technology_finance"
     },
     {
         "value": "(blackpink OR #blackpink or \"jennie kim\" OR \"kim jennie\" OR lalisa OR jisoo OR rosé OR #TAEHYUNG)",

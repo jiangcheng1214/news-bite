@@ -2,12 +2,14 @@ from dotenv import load_dotenv
 import requests
 import os
 import json
+from Constants import TWITTER_BEARER_TOKEN_EVAR_KEY
 
 # To set your environment variables in your terminal run the following line:
 # export 'BEARER_TOKEN'='<your_bearer_token>'
 load_dotenv()
-bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
+bearer_token = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
 print(bearer_token)
+
 
 def create_url():
     tweet_fields = "tweet.fields=lang,author_id"
