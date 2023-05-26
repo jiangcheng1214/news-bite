@@ -9,11 +9,12 @@ from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
 from utils.BufferedFileWriter import BufferedFileWriter
 from utils.BufferedRedisWriter import BufferedRedisWriter
-from utils.Utilities import RAW_TWEET_FILE_PREFIX, TwitterTopic, get_current_hour, get_today_date
+from utils.Utilities import TwitterTopic, get_current_hour, get_today_date
+from Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
 from utils.Logging import info
 
 load_dotenv()
-key = os.getenv("TWITTER_BEARER_TOKEN")
+key = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
 
 print(key)
 #assert (len(key) > 0, "Twitter key is not set")

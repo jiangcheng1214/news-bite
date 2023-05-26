@@ -12,7 +12,7 @@ usage: python start_twitter_summary_generation.py
 """
 
 finance_tweet_summarizer = TweetSummarizer(os.path.join(os.path.dirname(
-    __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.FINANCE.value)
+    __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.TECHNOLOGY_FINANCE.value)
 
 # we aggregate news and post to twitter every 3 hours
 news_summary_hour_interval = 3
@@ -51,19 +51,19 @@ while True:
         date = get_today_date()
     if hour % news_summary_hour_interval == 0:
         hourly_summary_file_paths = get_hourly_summary_file_paths(
-            TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
+            TwitterTopic.TECHNOLOGY_FINANCE.value, date, hour - news_summary_hour_interval, hour)
 
         summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}")
+            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.TECHNOLOGY_FINANCE.value, date, f"summary_{hour}")
         if not os.path.exists(summary_file_path):
             finance_tweet_summarizer.summarize_intra_day_tweets(
                 hourly_summary_file_paths, summary_file_path)
 
         enriched_summary_file_path = os.path.join(os.path.dirname(
-            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.FINANCE.value, date, f"summary_{hour}_enriched")
+            __file__),  '..', '..', 'data', 'tweet_summaries', TwitterTopic.TECHNOLOGY_FINANCE.value, date, f"summary_{hour}_enriched")
         if not os.path.exists(enriched_summary_file_path):
             raw_tweet_file_paths = get_raw_tweet_file_paths(
-                TwitterTopic.FINANCE.value, date, hour - news_summary_hour_interval, hour)
+                TwitterTopic.TECHNOLOGY_FINANCE.value, date, hour - news_summary_hour_interval, hour)
             finance_tweet_summarizer.enrich_tweet_summary(
                 raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
             TwitterAPIManager().upload_summary_items(enriched_summary_file_path)

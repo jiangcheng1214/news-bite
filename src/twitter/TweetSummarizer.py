@@ -2,7 +2,8 @@ import json
 import os
 from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
-from utils.Utilities import get_date, RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX, get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
+from utils.Utilities import get_date,  get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
+from utils.Constants import RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX
 from utils.Logging import info, error
 from utils.TextEmbeddingCache import TextEmbeddingCache
 
@@ -12,12 +13,8 @@ class TweetSummarizer:
     def __init__(self, master_folder, topic: TwitterTopic):
         self.master_folder = master_folder
         self.topic = topic
-        if topic == TwitterTopic.FINANCE.value:
-            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.FINANCE.value
-        elif topic == TwitterTopic.TECHNOLOGY.value:
-            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.TECHNOLOGY.value
-        elif topic == TwitterTopic.CRYPTO_CURRENCY.value:
-            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.CRYPTO_CURRENCY.value
+        if topic == TwitterTopic.TECHNOLOGY_FINANCE.value:
+            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.TECHNOLOGY_FINANCE.value
         else:
             assert False, f"unsupported topic {topic}"
         self.running = False
@@ -63,7 +60,7 @@ class TweetSummarizer:
 
         info(f"start generating daily summary for {self.topic}")
         aggregated_summary_item_list = self.openaiApiManager.merge_summary_items(
-            single_summary_text_list, self.topic)
+            single_summary_text_list)
         if not os.path.exists(os.path.dirname(output_file_path)):
             os.makedirs(os.path.dirname(output_file_path))
         with open(output_file_path, 'a') as f:
@@ -227,7 +224,7 @@ class TweetSummarizer:
                 info(f"{summary_file_path} exists. Return.")
                 continue
             summarize_responses = self.openaiApiManager.summarize_tweets(
-                clean_tweets, self.topic)
+                clean_tweets)
             if len(summarize_responses) == 0:
                 info(f"summarize_responses is empty. Return.")
             else:

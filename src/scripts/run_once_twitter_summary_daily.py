@@ -37,7 +37,7 @@ def get_raw_tweet_file_paths(topic: str, date, start_hour, end_hour):
 
 
 finance_tweet_summarizer = TweetSummarizer(os.path.join(os.path.dirname(
-    __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.FINANCE.value)
+    __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.TECHNOLOGY_FINANCE.value)
 
 for hour in [3, 6, 9, 12, 15, 18, 21, 24]:
     summary_file_paths = get_hourly_summary_file_paths(

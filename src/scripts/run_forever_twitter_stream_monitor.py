@@ -1,13 +1,14 @@
 import json
 import os
 from dotenv import load_dotenv
+from utils.Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Decorators import rabbitmq_decorator
 from utils.Logging import info
 from utils.BufferedFileWriter import BufferedFileWriter
 from twitter.TwitterFilteredStreamer import TwitterFilteredStreamer
 from twitter.TwitterUserLooker import TwitterUserLooker
-from utils.Utilities import TwitterTopic, RAW_TWEET_FILE_PREFIX, get_clean_text
+from utils.Utilities import TwitterTopic
 
 """
 This script is used to monitor twitter stream and save tweets to file.
@@ -15,7 +16,7 @@ usage: python start_twitter_stream_monitor.py
 """
 
 load_dotenv()
-key = os.getenv("TWITTER_BEARER_TOKEN")
+key = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
 
 assert (len(key) > 0, "Twitter key is not set")
 
@@ -27,7 +28,7 @@ raw_tweets_file_writer_by_topic = {topic.value: BufferedFileWriter(os.path.join(
     for topic in TwitterTopic}
 
 # Add more topics here if needed
-monitored_topics = [TwitterTopic.FINANCE.value]
+monitored_topics = [TwitterTopic.TECHNOLOGY_FINANCE.value]
 
 tweet_count_by_topic = {topic: 0 for topic in monitored_topics}
 

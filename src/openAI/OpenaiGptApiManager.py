@@ -92,8 +92,7 @@ class OpenaiGptApiManager():
             f"OpenAI API Error: Failed to get response after {num_retries} retries")
         return None
 
-    def summarize_tweets(self, tweets, topic: str):
-        # normalized_topic = topic.replace("_", " ")
+    def summarize_tweets(self, tweets: List[str]):
         system_setup_prompt = f"As an tweet analyzer, you will perform following tasks:\
             1. Filter out advertisement tweets \
             2. Combine similar tweets and extract valuable information into bullet point news-style format \
@@ -114,7 +113,7 @@ class OpenaiGptApiManager():
                 current_tweet_group.append(tweets.pop(0))
             target_summary_item_count = int(
                 len(current_tweet_group) * self.summarize_ratio)
-            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} news style points:\n"
+            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} points and refine them into news texts:\n"
             tweets_by_line = '\n'.join(current_tweet_group)
             user_prompt = f"{user_prompt_intro}{tweets_by_line}"
             estimated_token_size = system_setup_prompt_token_size + \
@@ -131,8 +130,7 @@ class OpenaiGptApiManager():
                 time.sleep(5)
         return responses
 
-    def merge_summary_items(self, all_summary_items, topic: str):
-        # normalized_topic = topic.replace("_", " ")
+    def merge_summary_items(self, all_summary_items):
         current_group = []
         while 1:
             while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
@@ -170,5 +168,5 @@ if __name__ == "__main__":
     # tweets = open(os.path.join(os.path.dirname(__file__),
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
-    #     tweets, TwitterTopic.CRYPTO_CURRENCY.value))
+    #     tweets))
     pass
