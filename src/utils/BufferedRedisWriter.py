@@ -25,6 +25,6 @@ class BufferedRedisWriter:
         self.redis.rpush(key, data)
 
         data = json.loads(data)
-        return [ data['tweet']['type'], data ]
+        return [ data['tweet_type'], data ]
 
 

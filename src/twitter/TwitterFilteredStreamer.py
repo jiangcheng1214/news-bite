@@ -77,7 +77,6 @@ class TwitterFilteredStreamer:
                         if not line:
                             continue
                         try:
-                            print(line)
                             data = json.loads(line)
                             for matching_rule_tag in set([r['tag'] for r in data['matching_rules']]):
                                 self.data_callback(
