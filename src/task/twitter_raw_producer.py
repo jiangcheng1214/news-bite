@@ -10,7 +10,7 @@ from twitter.TwitterUserLooker import TwitterUserLooker
 from utils.BufferedFileWriter import BufferedFileWriter
 from utils.BufferedRedisWriter import BufferedRedisWriter
 from utils.Utilities import TwitterTopic, get_current_hour, get_today_date
-from Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
+from utils.Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
 from utils.Logging import info
 
 load_dotenv()
@@ -35,7 +35,7 @@ def callback(tweet, matching_topic):
     author_metadata = user_looker.lookup_user_metadata(tweet['author_id'])
     complete_tweet_received = {'tweet': tweet,
                                'authorMetadata': author_metadata}
-    
+
     complete_tweets_received_by_topic[matching_topic].append(
         complete_tweet_received)
     tweet_count_by_topic[matching_topic] += 1
@@ -47,12 +47,12 @@ def callback(tweet, matching_topic):
         stats_string += f' {t.value}:{tweet_count_by_topic[t.value]}'
     info(stats_string)
     raw_tweets_file_writer_by_topic[matching_topic].append(
-         json.dumps(complete_tweet_received))
-    
+        json.dumps(complete_tweet_received))
+
     # 将数据作为新的消息添加到Redis Stream
     tweet['tweet_type'] = matching_topic
-    redis_client.xadd('twitter_stream', {'tweet':json.dumps(tweet),'authorMetadata':json.dumps(author_metadata)})
-
+    redis_client.xadd('twitter_stream', {'tweet': json.dumps(
+        tweet), 'authorMetadata': json.dumps(author_metadata)})
 
 
 REDISDB = 1
@@ -60,7 +60,8 @@ REDISDB = 1
 # app = Celery('twitter_stream', broker='redis://localhost:6379/'+REDISDB)
 
 # 连接到Redis
-redis_client = redis.Redis(host='localhost', port=6379, db=REDISDB, password="MyN3wP4ssw0rd")
+redis_client = redis.Redis(host='localhost', port=6379,
+                           db=REDISDB, password="MyN3wP4ssw0rd")
 
 fetcher = TwitterFilteredStreamer(key, callback)
 fetcher.start_stream()
@@ -69,11 +70,3 @@ fetcher.start_stream()
 # @app.task
 # def producer_task():
 #     fetcher.start_stream()
-
-
-
-
-
-
-
-

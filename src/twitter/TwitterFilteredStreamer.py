@@ -4,8 +4,7 @@ from utils.Logging import info
 from urllib.parse import urlencode
 import requests
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
-from utils.Utilities import TwitterTopic
-from typing import List
+
 
 class TwitterFilteredStreamer:
     stream_url: str
@@ -16,7 +15,7 @@ class TwitterFilteredStreamer:
     data_callback: callable
     running: bool
 
-    def __init__(self, api_key: str, topics: List[TwitterTopic], data_callback: callable):
+    def __init__(self, api_key: str, topic: str, data_callback: callable):
         self.api_key = api_key
         self.rules_url = 'https://api.twitter.com/2/tweets/search/stream/rules'
         # https://developer.twitter.com/en/docs/twitter-api/data-dictionary/object-model/tweet
@@ -26,7 +25,7 @@ class TwitterFilteredStreamer:
         })
         self.stream_url = f'https://api.twitter.com/2/tweets/search/stream?{response_params}'
 
-        self.rules_manager = TwitterFilterRulesManager(api_key, topics)
+        self.rules_manager = TwitterFilterRulesManager(api_key, topic)
         self.data_callback = data_callback
         self.running = False
 
