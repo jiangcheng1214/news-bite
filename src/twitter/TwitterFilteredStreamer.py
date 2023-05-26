@@ -77,6 +77,7 @@ class TwitterFilteredStreamer:
                         if not line:
                             continue
                         try:
+                            print(line)
                             data = json.loads(line)
                             for matching_rule_tag in set([r['tag'] for r in data['matching_rules']]):
                                 self.data_callback(
@@ -84,9 +85,10 @@ class TwitterFilteredStreamer:
                         except json.JSONDecodeError as e:
                             info(
                                 f"Failed to load json due to json.JSONDecodeError. {line}")
-                        except KeyError:
-                            info(
-                                f"Failed to load json due to KeyError. {line}")
+                        except KeyError as e:
+                                info(f"Failed to load json due to KeyError: {str(e)}. {line}")
+
+                        
                 except (requests.exceptions.ConnectionError):
                     info(
                         f'Retrying in {retry_delay} seconds due to ConnectionError')
