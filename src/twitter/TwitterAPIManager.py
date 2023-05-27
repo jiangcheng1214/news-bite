@@ -5,6 +5,7 @@ import tweepy
 import os
 import redis
 from dotenv import load_dotenv
+from utils.RedisClient import RedisClient
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
 from utils.Utilities import get_clean_text
@@ -16,7 +17,7 @@ load_dotenv()
 class TwitterAPIManager:
     def __init__(self):
         self.api = self.create_api()
-        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis_client = RedisClient().connect()
 
     def create_api(self):
         consumer_key = os.getenv("TWITTER_POSTING_ACCOUNT_CONSUMER_API_KEY")

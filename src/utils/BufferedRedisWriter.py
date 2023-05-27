@@ -1,8 +1,9 @@
+import json
 import os
 import time
 import redis
 from utils.Decorators import rabbitmq_decorator
-
+from utils.RedisClient import RedisClient
 from utils.Utilities import get_today_date, get_current_hour
 
 class BufferedRedisWriter:
@@ -13,8 +14,7 @@ class BufferedRedisWriter:
         self.filename_hour = filename_hour
         self.flush_interval = flush_interval
         self.last_flush_time = time.monotonic()
-        self.redis = redis.Redis(host='localhost', port=6379, db=1,password="MyN3wP4ssw0rd")  # adjust as needed
-
+        self.redis = RedisClient().connect()
 
     @rabbitmq_decorator('twitter_raw_data')
     def append(self, data):
@@ -24,7 +24,7 @@ class BufferedRedisWriter:
         key = self.master_key + sub_key
         self.redis.rpush(key, data)
 
-        return [key,data]
-        #async to inesrt into msql
+        data = json.loads(data)
+        return [ data['tweet_type'], data ]
 
 

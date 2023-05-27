@@ -1,5 +1,6 @@
 import time
 import json
+from utils.RedisClient import RedisClient
 from utils.Utilities import get_clean_text
 from utils.Constants import OPENAI_API_KEY_EVAR_KEY, REDIS_TWEET_EMBEDDING_DICT_KEY,  MINIMAL_OPENAI_API_CALL_INTERVAL_SEC, MAX_EMBEDDING_CACHE_SIZE, REDIS_SAVE_EMBEDDING_CACHE_INTERVAL_SEC
 from utils.Logging import info, warn, error
@@ -7,22 +8,18 @@ from openai.embeddings_utils import get_embedding
 from dotenv import load_dotenv
 import openai
 import os
-import redis
 import numpy as np
 from typing import List
 load_dotenv()
 openai.api_key = os.getenv(OPENAI_API_KEY_EVAR_KEY)
 
 # Singleton class for caching text embeddings
-
-
 class TextEmbeddingCache:
     _instance = None
 
     def __init__(self):
         assert TextEmbeddingCache._instance is None, "Singleton class"
-        self.redis_client = redis.Redis(host=os.getenv("REDIS_HOST"), port=os.getenv(
-            "REDIS_PORT"), db=os.getenv("REDIS_DB"), password=os.getenv("REDIS_PASS"))
+        self.redis_client = RedisClient().connect()
         self.embedding_model = "text-embedding-ada-002"
         embedding_dict_json_string = self.redis_client.get(
             REDIS_TWEET_EMBEDDING_DICT_KEY)
