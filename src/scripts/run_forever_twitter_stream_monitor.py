@@ -51,7 +51,7 @@ def callback(tweet, matching_topic):
 
 
 twitterFilterRulesManager = TwitterFilterRulesManager(
-    bearer_token, monitored_topic)
+    bearer_token, [monitored_topic])
 streamer = TwitterFilteredStreamer(
     bearer_token, twitterFilterRulesManager, callback)
 streamer.start_stream()

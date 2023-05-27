@@ -59,7 +59,6 @@ class TwitterFilteredStreamer:
                             matching_rule_tags = set(
                                 [r['tag'] for r in data['matching_rules']])
                             tweet_data = data['data']
-
                         except json.JSONDecodeError as e:
                             info(
                                 f"Failed to load json due to json.JSONDecodeError. {line}")

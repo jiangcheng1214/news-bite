@@ -2,7 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
-from utils.Constants import TWITTER_BEARER_TOKEN_DEV_EVAR_KEY, INFLUENCER_FILE_PREFIX
+from utils.Constants import TWITTER_BEARER_TOKEN_DEV_EVAR_KEY
 from utils.Decorators import rabbitmq_decorator
 from utils.Logging import info, warn
 from utils.BufferedFileWriter import BufferedFileWriter
@@ -22,34 +22,41 @@ assert (len(bearer_token) > 0, "Twitter key is not set")
 
 user_looker = TwitterUserLooker(bearer_token)
 deteceted_influencers = {}
-for influencer_data_file in os.listdir(os.path.join(os.path.dirname(__file__), '..', '..', 'data', TwitterTopic.INFLUENCERS.value)):
-    for line in open(os.path.join(os.path.dirname(__file__), '..', '..', 'data', TwitterTopic.INFLUENCERS.value, influencer_data_file)):
-        influencer_data_json = json.loads(line)
-        deteceted_influencers[influencer_data_json['id']] = 1
+monitored_topics = [TwitterTopic.INFLUENCERS.value,
+                    TwitterTopic.POSSIBLE_PORN_INFLUENCERS.value]
+for monitored_topic in monitored_topics:
+    if os.path.exists(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic)):
+        for influencer_data_file in os.listdir(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic)):
+            for line in open(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic, influencer_data_file)):
+                influencer_data_json = json.loads(line)
+                deteceted_influencers[influencer_data_json['id']] = 1
 info(f'Loaded {len(deteceted_influencers)} influencers from file')
 total_received = 0
-monitored_topic = TwitterTopic.INFLUENCERS.value
-raw_tweets_file_writer_by_lang = {
-    'chinese': BufferedFileWriter(os.path.join(os.path.dirname(
-        __file__),  '..', '..', 'data', monitored_topic), 'chinese_', daily_only=True),
-    'english': BufferedFileWriter(os.path.join(os.path.dirname(
-        __file__),  '..', '..', 'data', monitored_topic), 'english_', daily_only=True)
+file_writer_by_lang_by_topic = {
+    'chinese': {
+        TwitterTopic.INFLUENCERS.value: BufferedFileWriter(os.path.join(os.path.dirname(
+            __file__),  '..', '..', 'data', TwitterTopic.INFLUENCERS.value), 'chinese_', daily_only=True)
+    },
+    'english': {
+        TwitterTopic.INFLUENCERS.value: BufferedFileWriter(os.path.join(os.path.dirname(
+            __file__),  '..', '..', 'data', TwitterTopic.INFLUENCERS.value), 'english_', daily_only=True),
+        TwitterTopic.POSSIBLE_PORN_INFLUENCERS.value: BufferedFileWriter(os.path.join(os.path.dirname(
+            __file__),  '..', '..', 'data', TwitterTopic.POSSIBLE_PORN_INFLUENCERS.value), 'english_', daily_only=True)
+    }
 }
 
 # @rabbitmq_decorator('twitter_raw_data')
 
 
 def callback(tweet, matching_topic):
-    if matching_topic != monitored_topic:
+    if matching_topic not in monitored_topics:
         warn(
-            f'Unexpected topic {matching_topic} received. Expected {monitored_topic}')
+            f'Unexpected topic {matching_topic} received. Expected {monitored_topics}')
         return
     global total_received, deteceted_influencers
     author_id = tweet['author_id']
-    
     if author_id in deteceted_influencers:
-        text = tweet['text']
-        info(f'Influencer {author_id} already detected. tweet:{text} Skipping')
+        info(f'{matching_topic} Influencer {author_id} already detected.')
         deteceted_influencers[author_id] += 1
         most_active_influencers_and_count = [f"{i[0]} {i[1]}" for i in sorted(
             deteceted_influencers.items(), key=lambda x: x[1], reverse=True)[:5]]
@@ -60,14 +67,20 @@ def callback(tweet, matching_topic):
     total_received += 1
     author_name = influencer_metadata['name']
     language = tweet['lang']
+    user_name = influencer_metadata['username']
+    user_url = f'https://twitter.com/{user_name}'
     followers_count = influencer_metadata['public_metrics']['followers_count']
-    stats_string = f'Influencer detected: {author_name} with {followers_count} followers. Total received: {total_received}'
+    influencer_metadata['tweet'] = tweet['text']
+    influencer_metadata['tweet_url'] = f'https://twitter.com/{user_name}/status/{tweet["id"]}'
+    influencer_metadata['user_url'] = user_url
+    text = tweet["text"].replace("\n", " ").strip()
+    stats_string = f'({total_received}) {matching_topic}: {author_name}({user_url}) with {followers_count} followers. tweet: {text}'
     info(stats_string)
     if language == 'zh-CN' or language == 'zh-TW':
-        raw_tweets_file_writer_by_lang['chinese'].append(
+        file_writer_by_lang_by_topic['chinese'][matching_topic].append(
             json.dumps(influencer_metadata))
     elif language == 'en':
-        raw_tweets_file_writer_by_lang['english'].append(
+        file_writer_by_lang_by_topic['english'][matching_topic].append(
             json.dumps(influencer_metadata))
     else:
         warn(
@@ -76,7 +89,7 @@ def callback(tweet, matching_topic):
 
 
 twitterFilterRulesManager = TwitterFilterRulesManager(
-    bearer_token, monitored_topic)
+    bearer_token, monitored_topics)
 streamer = TwitterFilteredStreamer(
     bearer_token, twitterFilterRulesManager, callback)
 streamer.start_stream()

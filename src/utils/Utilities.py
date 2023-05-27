@@ -6,6 +6,7 @@ import re
 class TwitterTopic(Enum):
     TECHNOLOGY_FINANCE = 'technology_finance'
     INFLUENCERS = 'influencers'
+    POSSIBLE_PORN_INFLUENCERS = 'possible_porn_influencers'
 
 
 class TwitterTopicMatchScoreSeeds(Enum):

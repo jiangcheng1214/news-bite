@@ -12,15 +12,15 @@ import requests
 class TwitterFilterRulesManager:
     rules_url = 'https://api.twitter.com/2/tweets/search/stream/rules'
 
-    def __init__(self, bearer_token: str, topic: str) -> None:
+    def __init__(self, bearer_token: str, topics: List[str]) -> None:
         self.bearer_token = bearer_token
-        self.topic = topic
+        self.topics = topics
         self.rules_file_path = os.path.join(os.path.dirname(
             __file__),  'rules', 'twitter_filter_rules.json')
 
     def sync_filter_rules(self):
-        active_rules = self._get_active_rules()
-        local_rules = self._get_local_rules(self.topic)
+        active_rules = self.get_all_active_rules()
+        local_rules = self._get_local_rules(self.topics)
         if (active_rules):
             deletion_response = self._delete_active_rules(
                 active_rules)
@@ -40,14 +40,14 @@ class TwitterFilterRulesManager:
             return []
         return data['data']
 
-    def _get_local_rules(self, topic: str) -> List[dict]:
+    def _get_local_rules(self, topics: List[str]) -> List[dict]:
         if not os.path.exists(self.rules_file_path):
             return []
         monitoering_rules = []
         with open(self.rules_file_path, 'r') as f:
             rules = json.load(f)
             for rule in rules:
-                if rule['tag'] == topic:
+                if rule['tag'] in topics:
                     monitoering_rules.append(rule)
         return monitoering_rules
 
@@ -61,7 +61,7 @@ class TwitterFilterRulesManager:
         data = response.json()
         if 'data' not in data:
             return []
-        rules = [r for r in data['data'] if r['tag'] == self.topic]
+        rules = [r for r in data['data'] if r['tag'] in self.topics]
         return rules
 
     def _add_rules(self, rules: List[dict]):
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     load_dotenv()
     bearer_token = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
     twitterFilterRulesManager = TwitterFilterRulesManager(
-        bearer_token, 'influencers')
+        bearer_token, ['influencers'])
     # active_rules = twitterFilterRulesManager._get_active_rules()
     # info(active_rules)
     # all_active_rules = twitterFilterRulesManager.get_all_active_rules()
