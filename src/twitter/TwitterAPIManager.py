@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
 from utils.Utilities import get_clean_text
-from utils.Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC
+from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, DEFAULT_REDIS_CACHE_EXPIRE_SEC, REDIS_POSTED_TWEETS_KEY, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC
 import json
 load_dotenv()
 
@@ -72,32 +72,30 @@ class TwitterAPIManager:
                 if self.should_post(data) == False:
                     continue
                 tweet_content = f"{summary_text}".strip()
-                media_url_added = False
                 if len(data['video_urls']) > 0:
                     try:
                         for media_url in data['video_urls']:
                             tweet_content = f"{tweet_content}\n{media_url}".strip(
                             )
-                            media_url_added = True
                     except Exception as e:
                         error(f"Error adding video_url {media_url}: {e}")
-                if len(data['image_urls']) > 0:
-                    try:
-                        for media_url in data['image_urls']:
-                            tweet_content = f"{tweet_content}\n{media_url}".strip(
+                else:
+                    if len(data['image_urls']) > 0:
+                        try:
+                            for media_url in data['image_urls']:
+                                tweet_content = f"{tweet_content}\n{media_url}".strip(
+                                )
+                        except Exception as e:
+                            error(f"Error adding image_url {media_url}: {e}")
+                    if len(data['external_urls']) > 0:
+                        try:
+                            url = data['external_urls'][0]
+                            short_url = self.shorten_url(url)
+                            tweet_content = f"{summary_text}\n{short_url}".strip(
                             )
-                            media_url_added = True
-                    except Exception as e:
-                        error(f"Error adding image_url {media_url}: {e}")
-
-                if not media_url_added and len(data['external_urls']) > 0:
-                    try:
-                        url = data['external_urls'][0]
-                        short_url = self.shorten_url(url)
-                        tweet_content = f"{summary_text}\n{short_url}".strip()
-                    except Exception as e:
-                        error(f"Error shortening url {url}: {e}")
-                        continue
+                        except Exception as e:
+                            error(f"Error shortening url {url}: {e}")
+                            continue
                 tweet_to_post.append(tweet_content)
         info(f"{len(tweet_to_post)} tweets to post")
         tweet_count = 0
@@ -108,6 +106,7 @@ class TwitterAPIManager:
             info(f"Posting tweet:\n{tweet_content}")
             try:
                 self.api.update_status(tweet_content)
+                time.sleep(5)
                 posted_tweets = self.redis_client.get(REDIS_POSTED_TWEETS_KEY)
                 if not posted_tweets:
                     posted_tweets = []
@@ -213,6 +212,7 @@ class TwitterAPIManager:
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
+    info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
     # '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/finance/20230521/summary_21_enriched')
     # api_manager.react_to_quality_tweets_from_file(
@@ -221,4 +221,4 @@ if __name__ == "__main__":
     #     second_since_created = int(
     #         time.time() - timeline_item.created_at.timestamp())
     #     info(f"created_at:{timeline_item.created_at}, second_since_created:{second_since_created} {timeline_item.id}, {timeline_item.in_reply_to_status_id}, {timeline_item.favorite_count}, {timeline_item.retweet_count}")
-    api_manager.untweet_and_unlike_expired_replies()
+    # api_manager.untweet_and_unlike_expired_replies()

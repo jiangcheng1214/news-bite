@@ -1,6 +1,7 @@
 import json
 import os
 from dotenv import load_dotenv
+from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
 from utils.Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Decorators import rabbitmq_decorator
@@ -16,13 +17,12 @@ usage: python start_twitter_stream_monitor.py
 """
 
 load_dotenv()
-key = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
+bearer_token = os.getenv(TWITTER_BEARER_TOKEN_EVAR_KEY)
 
-assert (len(key) > 0, "Twitter key is not set")
+assert (len(bearer_token) > 0, "Twitter key is not set")
 
-user_looker = TwitterUserLooker(key)
+user_looker = TwitterUserLooker(bearer_token)
 total_received = 0
-complete_tweets_received = []
 monitored_topic = TwitterTopic.TECHNOLOGY_FINANCE.value
 raw_tweets_file_writer = BufferedFileWriter(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets', monitored_topic), RAW_TWEET_FILE_PREFIX)
@@ -35,12 +35,10 @@ def callback(tweet, matching_topic):
         warn(
             f'Unexpected topic {matching_topic} received. Expected {monitored_topic}')
         return
-    global complete_tweets_received, total_received
+    global total_received
     author_metadata = user_looker.lookup_user_metadata(tweet['author_id'])
     complete_tweet_received = {'tweet': tweet,
                                'authorMetadata': author_metadata}
-    complete_tweets_received.append(
-        complete_tweet_received)
     total_received += 1
     author_name = complete_tweet_received['authorMetadata']['name']
     followers_count = complete_tweet_received['authorMetadata']['public_metrics']['followers_count']
@@ -52,5 +50,8 @@ def callback(tweet, matching_topic):
     TextEmbeddingCache.get_instance().embedding_of(tweet['text'])
 
 
-streamer = TwitterFilteredStreamer(key, monitored_topic, callback)
+twitterFilterRulesManager = TwitterFilterRulesManager(
+    bearer_token, monitored_topic)
+streamer = TwitterFilteredStreamer(
+    bearer_token, twitterFilterRulesManager, callback)
 streamer.start_stream()

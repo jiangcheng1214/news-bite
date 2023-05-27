@@ -5,9 +5,10 @@ import re
 
 class TwitterTopic(Enum):
     TECHNOLOGY_FINANCE = 'technology_finance'
+    INFLUENCERS = 'influencers'
 
 
-class TwitterTopicMatchScoreSeed(Enum):
+class TwitterTopicMatchScoreSeeds(Enum):
     TECHNOLOGY_FINANCE = 'technology financial news'
 
 

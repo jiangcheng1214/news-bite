@@ -1,6 +1,6 @@
 import json
 import time
-from utils.Logging import info
+from utils.Logging import info, warn
 from urllib.parse import urlencode
 import requests
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
@@ -8,36 +8,28 @@ from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
 
 class TwitterFilteredStreamer:
     stream_url: str
-    rules_url: str
     stream: requests.Response
     rules_manager: TwitterFilterRulesManager
-    api_key: str
+    bearer_token: str
     data_callback: callable
-    running: bool
 
-    def __init__(self, api_key: str, topic: str, data_callback: callable):
-        self.api_key = api_key
-        self.rules_url = 'https://api.twitter.com/2/tweets/search/stream/rules'
+    def __init__(self, bearer_token: str, twitterFilterRulesManager: TwitterFilterRulesManager, data_callback: callable):
+        self.bearer_token = bearer_token
         # https://developer.twitter.com/en/docs/twitter-api/data-dictionary/object-model/tweet
         response_params = urlencode({
             'tweet.fields': 'id,author_id,text,created_at,entities,lang,attachments',
             'user.fields': 'id,username',
         })
         self.stream_url = f'https://api.twitter.com/2/tweets/search/stream?{response_params}'
-
-        self.rules_manager = TwitterFilterRulesManager(api_key, topic)
+        self.rules_manager = twitterFilterRulesManager
         self.data_callback = data_callback
-        self.running = False
 
     def start_stream(self):
-        if self.running:
-            exit(1)
-        self.running = True
-        self.rules_manager.update_rules_if_necessary()
+        self.rules_manager.sync_filter_rules()
         self.tweet_received_since_start = 0
         headers = {
             'User-Agent': 'v2FilterStreamPy',
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.bearer_token}',
         }
         attempts = 0
         max_attempts = 5
@@ -64,15 +56,20 @@ class TwitterFilteredStreamer:
                             continue
                         try:
                             data = json.loads(line)
-                            for matching_rule_tag in set([r['tag'] for r in data['matching_rules']]):
-                                self.data_callback(
-                                    data['data'], matching_rule_tag)
+                            matching_rule_tags = set(
+                                [r['tag'] for r in data['matching_rules']])
+                            tweet_data = data['data']
+
                         except json.JSONDecodeError as e:
                             info(
                                 f"Failed to load json due to json.JSONDecodeError. {line}")
-                        except KeyError:
-                            info(
-                                f"Failed to load json due to KeyError. {line}")
+                        try:
+                            for matching_rule_tag in matching_rule_tags:
+                                self.data_callback(
+                                    tweet_data, matching_rule_tag)
+                        except Exception as e:
+                            warn(
+                                f'Failed to process tweet data due to {e}. Line: {line}')
                 except (requests.exceptions.ConnectionError):
                     info(
                         f'Retrying in {retry_delay} seconds due to ConnectionError')

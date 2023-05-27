@@ -17,21 +17,19 @@ class OpenaiGptApiManager():
     def __init__(self, gpt_model_version: OpenaiModelVersion):
         self.API = openai
         # self.embedding_model = "text-embedding-ada-002"
-        self.summarize_ratio = 0.1
+        self.summarize_ratio = 0.2
         if gpt_model_version == OpenaiModelVersion.GPT3_5.value:
             self.gpt_model_name = "gpt-3.5-turbo"
             # 4096 tokens for gpt-3.5-turbo
             self.token_size_limit = 4096
             # 60% of the token size limit will be used for the prompt
-            self.token_size_limit_usage_ratio_for_summarization = 0.6
-            self.token_size_limit_usage_ratio_for_news_likelihood = 0.3
+            self.token_size_limit_usage_ratio_for_summarization = 0.5
         elif gpt_model_version == OpenaiModelVersion.GPT4.value:
             self.gpt_model_name = "gpt-4"
             # 4096 tokens for gpt-4
             self.token_size_limit = 8192
             # x of the token size limit will be used for the prompt
             self.token_size_limit_usage_ratio_for_summarization = 0.7
-            self.token_size_limit_usage_ratio_for_news_likelihood = 0.3
 
     def _get_complete_gpt_response(self, system_prompt: str, user_prompt: str, num_retries=3):
         for i in range(num_retries):
@@ -93,12 +91,11 @@ class OpenaiGptApiManager():
         return None
 
     def summarize_tweets(self, tweets: List[str]):
-        system_setup_prompt = f"As an tweet analyzer, you will perform following tasks:\
-            1. Filter out advertisement tweets \
-            2. Combine similar tweets and extract valuable information into bullet point news-style format \
-            3. Prioritize government regulations or official announcements from authoritative sources \
-            Tweet inputs are in the format: (auther name) (author follower count) (tweet content) \
-            Keep in mind that tweets from authoritative authors and those with large follower count should not be ignored."
+        system_setup_prompt = f"As a tweet analyzer, you will perform the following tasks:\
+            1. Ignore advertisements and extract informational tweets. \
+            2. Prioritize breaking news and contents from authors with large follower count. \
+            3. Only include country-specific tweets related to more developed countries such as [USA, European countries, China, Japan, Canada etc] \
+            Tweet inputs are in the format: (author name) (follower count) (tweet)"
 
         system_setup_prompt_token_size = len(
             nltk.word_tokenize(system_setup_prompt))
@@ -113,7 +110,7 @@ class OpenaiGptApiManager():
                 current_tweet_group.append(tweets.pop(0))
             target_summary_item_count = int(
                 len(current_tweet_group) * self.summarize_ratio)
-            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} points and refine them into news texts:\n"
+            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} points and rephrase them to news:\n"
             tweets_by_line = '\n'.join(current_tweet_group)
             user_prompt = f"{user_prompt_intro}{tweets_by_line}"
             estimated_token_size = system_setup_prompt_token_size + \
@@ -135,7 +132,7 @@ class OpenaiGptApiManager():
         while 1:
             while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_group.append(all_summary_items.pop(0))
-            user_prompt_intro = f"Remove repetitive items and generate up to 20 news points in the language that easy to understand. Following news are one item per line:\n"
+            user_prompt_intro = f"Merge similar news and generate up to 20 news in the language that is easy to understand. Inputs are one news per line:\n"
             summary_by_line = '\n'.join(current_group)
             user_prompt = f"{user_prompt_intro}{summary_by_line}"
             estimated_token_size = len(nltk.word_tokenize(user_prompt))

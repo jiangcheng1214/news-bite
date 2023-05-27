@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
-from utils.Utilities import get_date,  get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeed, clean_summary
+from utils.Utilities import get_date,  get_clean_text, OpenaiModelVersion, TwitterTopic, TwitterTopicMatchScoreSeeds, clean_summary
 from utils.Constants import RAW_TWEET_FILE_PREFIX, MIN_RAW_TWEET_LENGTH_FOR_EMBEDDING, SUM_TWEET_FILE_PREFIX
 from utils.Logging import info, error
 from utils.TextEmbeddingCache import TextEmbeddingCache
@@ -14,7 +14,7 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         if topic == TwitterTopic.TECHNOLOGY_FINANCE.value:
-            self.topic_match_score_seed = TwitterTopicMatchScoreSeed.TECHNOLOGY_FINANCE.value
+            self.topic_match_score_seed = TwitterTopicMatchScoreSeeds.TECHNOLOGY_FINANCE.value
         else:
             assert False, f"unsupported topic {topic}"
         self.running = False
