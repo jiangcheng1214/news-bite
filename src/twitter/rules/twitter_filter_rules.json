@@ -16,7 +16,7 @@
         "tag": "technology_finance"
     },
     {
-        "value": "-(adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR horny OR cum OR masturbation) lang:en is:verified followers_count:200000 -is:retweet -is:reply -is:quote tweets_count:1..100000",
+        "value": "-(adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en is:verified followers_count:200000 -is:retweet -is:reply -is:quote tweets_count:1..100000",
         "tag": "influencers"
     },
     {
@@ -24,7 +24,7 @@
         "tag": "influencers"
     },
     {
-        "value": "(adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy \"sugar daddy\") lang:en -is:retweet -is:reply -is:quote followers_count:20000 tweets_count:1..100000",
+        "value": "(adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en -is:retweet -is:reply -is:quote followers_count:20000 tweets_count:1..100000",
         "tag": "possible_porn_influencers"
     }
 ]
