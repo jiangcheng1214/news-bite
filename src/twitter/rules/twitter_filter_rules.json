@@ -1,18 +1,18 @@
 [
     {
-        "value": "(bitcoin OR btc OR #bitcoin OR #btc OR eth2 OR ethereum2 OR ethereum OR eth OR #ethereum OR #ethereum2 OR #eth OR #eth2 OR crypto OR \"crypto currency\" OR \"block chain\" OR blockchain OR #crypto OR #cryptocurrency OR #blockchain OR #ico OR ico) -\"!\" -\"?\" -airdrop -giveaway -retweet -rt -\"follow me\" -\"give away\" -\"sign up\" -\"for free\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(bitcoin OR btc OR ethereum OR eth OR #ethereum OR #eth OR crypto OR \"crypto currency\" OR \"block chain\" OR blockchain OR cryptocurrency OR #crypto OR #cryptocurrency OR #blockchain OR #ico OR ico OR affair OR affairs OR web3 OR decentralized) -please -plz -pls -airdrop -giveaway -retweet -rt -\"follow me\" -\"give away\" -\"sign up\" -\"for free\" -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
-        "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR gdp OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking OR sp500 OR #breakingnews OR #earningreport) -\"!\" -\"?\" -please -plz -pls -retweet -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR gdp OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking OR sp500 OR #breakingnews OR #earningreport) -please -plz -pls -retweet -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
-        "value": "(technology OR \"IT news\" OR \"AI\" OR \"machine learning\" OR \"deep learning\" OR \"neural networks\" OR \"computer vision\" OR cryptocurrency OR blockchain OR cybersecurity OR web3 OR wearables OR SEC OR \"silicon valley\" OR programming OR #hightech OR #technology OR #ai OR artificialintelligence) -\"!\" -\"?\" -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(technology OR \"IT news\" OR ai OR \"machine learning\" OR \"deep learning\" OR \"neural networks\" OR \"computer vision\" OR cybersecurity OR SEC OR \"silicon valley\" OR programming OR #hightech OR #technology OR #ai OR #artificialintelligence OR hack OR attack OR scandal OR etf) -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
-        "value": "(software OR wearables OR \"AI\" OR \"chatgpt\" OR \"openai\" OR \"tech companies\" OR \"data privacy\" OR \"space tech\" OR agritech OR robot OR robotics OR nanotechnology OR \"quantum computing\" OR \"augmented reality\" OR \"virtual reality\" OR \"cloud computing\")  -\"!\" -\"?\" -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(software OR wearables OR chatgpt OR transformer OR gpt openai OR tech OR agritech OR robot OR robotics OR nanotechnology OR computing OR \"augmented reality\" OR \"virtual reality\" OR #ar OR #vr OR breakthrough OR chips OR gpu OR data OR solar)  -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
@@ -24,7 +24,7 @@
         "tag": "influencers"
     },
     {
-        "value": "(adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en -is:retweet -is:reply -is:quote followers_count:20000 tweets_count:1..100000",
+        "value": "-from:69008563 -from:754393222563102720 -from:200583835 -from:917781171466936320 -from:74039463 (adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en -is:retweet -is:reply -is:quote followers_count:200000 tweets_count:1..100000",
         "tag": "possible_porn_influencers"
     }
 ]

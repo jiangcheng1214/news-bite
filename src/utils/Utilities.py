@@ -60,7 +60,7 @@ def get_clean_text(raw_text):
     new_line_free_text = raw_text.replace('\n', ' ')
     link_free_text = re.sub(r'http\S+', '', new_line_free_text)
     link_free_clean_text = re.sub(' +', ' ', link_free_text)
-    return link_free_clean_text
+    return link_free_clean_text.strip()
 
 
 def clean_summary(summary: str):
