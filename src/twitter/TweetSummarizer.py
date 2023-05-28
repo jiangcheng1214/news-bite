@@ -161,14 +161,16 @@ class TweetSummarizer:
             source_text, match_score = TextEmbeddingCache.get_instance().find_best_match_and_score(
                 all_tweets, individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
-            similarity_scores = [TextEmbeddingCache.get_instance().get_text_similarity_score(
-                seed, individual_summary) for seed in self.topic_match_score_seeds]
-            topic_relavance_score = max(similarity_scores)
+            similarity_scores_by_topic = [(TextEmbeddingCache.get_instance().get_text_similarity_score(
+                seed, individual_summary), seed) for seed in self.topic_match_score_seeds]
+            top_topic_relavance_score, top_topic = max(
+                similarity_scores_by_topic)
             enriched_summary = {
                 "summary": individual_summary,
                 "match_score": match_score,
                 "source_text": source_text,
-                "topic_relavance_score": topic_relavance_score,
+                "topic_relavance_score": top_topic_relavance_score,
+                "topic": top_topic,
                 "tweet_url": tweet_url,
                 "external_urls": text_to_tweet[source_text]['external_urls'],
                 "video_urls": text_to_tweet[source_text]['video_urls'],

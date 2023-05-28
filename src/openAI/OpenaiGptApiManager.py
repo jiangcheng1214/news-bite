@@ -94,7 +94,7 @@ class OpenaiGptApiManager():
         system_setup_prompt = f"As a tweet analyzer, you will perform the following tasks:\
             1. Ignore tweets that contains question mark or exclamation mark. \
             2. Ignore advertisements and extract informational tweets. \
-            3. Ignore tweets related to countries which are less developed. \
+            3. Ignore tweets related to countries which are less developed such as Uganda, Kenya, Indonesia etc. \
             4. Prioritize breaking news and contents from authors with large follower count. \
             Tweet inputs are in the format: (author name) (follower count) (tweet)"
 
@@ -111,7 +111,7 @@ class OpenaiGptApiManager():
                 current_tweet_group.append(tweets.pop(0))
             target_summary_item_count = int(
                 len(current_tweet_group) * self.summarize_ratio)
-            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} points and rephrase them to news:\n"
+            user_prompt_intro = f"Summarize these tweets into up to ${target_summary_item_count} points and rephrase them to news that is easy for people to understand\n"
             tweets_by_line = '\n'.join(current_tweet_group)
             user_prompt = f"{user_prompt_intro}{tweets_by_line}"
             estimated_token_size = system_setup_prompt_token_size + \

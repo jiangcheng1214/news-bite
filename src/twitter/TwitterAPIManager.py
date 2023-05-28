@@ -77,25 +77,19 @@ class TwitterAPIManager:
                 return False
         return True
 
-    def get_most_similar_score_text_id(self, tweet_json_data, recent_posted_tweets_with_id):
-        summary_text = tweet_json_data['summary']
-        if len(summary_text) == 0:
-            return 0, None, None
-
-        most_similar_recent_posted_tweet = None
-        most_similar_recent_posted_tweet_id = None
-        most_similar_score = 0
+    def get_most_similar_score_text_id(self, text, recent_posted_tweets_with_id):
+        if len(text) == 0:
+            return []
+        result = []
         for recent_posted_tweet_with_id in recent_posted_tweets_with_id:
             recent_posted_tweet = recent_posted_tweet_with_id[0]
             recent_posted_tweet_id = recent_posted_tweet_with_id[1]
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
-                summary_text, recent_posted_tweet)
-            most_similar_score = max(most_similar_score, similarity)
-            if similarity > most_similar_score:
-                most_similar_score = similarity
-                most_similar_recent_posted_tweet = recent_posted_tweet
-                most_similar_recent_posted_tweet_id = recent_posted_tweet_id
-        return most_similar_score, most_similar_recent_posted_tweet, most_similar_recent_posted_tweet_id
+                text, recent_posted_tweet)
+            if similarity > TWEET_SIMILARITY_FOR_REPLY:
+                result.append(
+                    [similarity, recent_posted_tweet, recent_posted_tweet_id])
+        return result
 
     def upload_summary_items(self, enriched_summary_file_path, max_items=None):
         if not os.path.exists(enriched_summary_file_path):
@@ -138,15 +132,17 @@ class TwitterAPIManager:
                         except Exception as e:
                             error(f"Error shortening url {url}: {e}")
                             continue
-                similar_score, similar_recent_posted_tweet, similar_recent_posted_tweet_id = self.get_most_similar_score_text_id(
-                    data, recent_posted_tweets_with_id)
-                if similar_score > TWEET_SIMILARITY_FOR_REPLY:
+                recent_posts_similarity = self.get_most_similar_score_text_id(
+                    summary_text, recent_posted_tweets_with_id)
+                reply_id = None
+                if (recent_posts_similarity):
+                    reply_candidate = max(recent_posts_similarity)[0]
+                    similar_score = reply_candidate[0]
+                    reply_id = reply_candidate[2]
+                    similar_recent_posted_tweet = reply_candidate[1]
                     info(
-                        f"Found similar tweet for thread, score: {similar_score}, similar_recent_posted_tweet: {similar_recent_posted_tweet}, similar_recent_posted_tweet_id: {similar_recent_posted_tweet_id}")
-                    tweets_to_post_with_reply_id.append(
-                        [tweet_content,  similar_recent_posted_tweet_id])
-                else:
-                    tweets_to_post_with_reply_id.append([tweet_content, None])
+                        f"Found similar tweet for thread, score: {similar_score}, similar_recent_posted_tweet: {similar_recent_posted_tweet}, reply_id: {reply_id}")
+                tweets_to_post_with_reply_id.append([tweet_content, reply_id])
                 if len(tweets_to_post_with_reply_id) >= candidate_limit:
                     break
         info(f"{len(tweets_to_post_with_reply_id)} candidate tweets to post")
@@ -265,8 +261,12 @@ class TwitterAPIManager:
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
-    api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230527/summary_24_enriched')
+    # api_manager.upload_summary_items(
+    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230527/summary_24_enriched')
+    recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
+    similar_score_text_id = api_manager.get_most_similar_score_text_id(
+        'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
+    info(similar_score_text_id.sort(key=lambda x: x[0], reverse=True))
     # api_manager.react_to_quality_tweets_from_file(
     #     '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
     # for timeline_item in api_manager.get_api().user_timeline(count=500):
