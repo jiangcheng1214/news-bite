@@ -94,7 +94,8 @@ class OpenaiGptApiManager():
         system_setup_prompt = f"As a tweet analyzer, you will perform the following tasks:\
             1. Ignore tweets that contains question mark or exclamation mark. \
             2. Ignore advertisements and extract informational tweets. \
-            3. Prioritize breaking news and contents from authors with large follower count. \
+            3. Ignore tweets related to countries which are less developed. \
+            4. Prioritize breaking news and contents from authors with large follower count. \
             Tweet inputs are in the format: (author name) (follower count) (tweet)"
 
         system_setup_prompt_token_size = len(
@@ -132,7 +133,7 @@ class OpenaiGptApiManager():
         while 1:
             while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
                 current_group.append(all_summary_items.pop(0))
-            user_prompt_intro = f"Merge similar news and generate up to 20 news in the language that is easy to understand. Ignore tweets related to less developed countries. Inputs are one news per line:\n"
+            user_prompt_intro = f"Merge similar news and generate up to 20 news in the language that is easy to understand. Inputs are one news per line:\n"
             summary_by_line = '\n'.join(current_group)
             user_prompt = f"{user_prompt_intro}{summary_by_line}"
             estimated_token_size = len(nltk.word_tokenize(user_prompt))

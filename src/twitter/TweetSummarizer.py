@@ -14,7 +14,7 @@ class TweetSummarizer:
         self.master_folder = master_folder
         self.topic = topic
         if topic == TwitterTopic.TECHNOLOGY_FINANCE.value:
-            self.topic_match_score_seed = TwitterTopicMatchScoreSeeds.TECHNOLOGY_FINANCE.value
+            self.topic_match_score_seeds = TwitterTopicMatchScoreSeeds.TECHNOLOGY_FINANCE.value
         else:
             assert False, f"unsupported topic {topic}"
         self.running = False
@@ -161,8 +161,9 @@ class TweetSummarizer:
             source_text, match_score = TextEmbeddingCache.get_instance().find_best_match_and_score(
                 all_tweets, individual_summary)
             tweet_url = text_to_tweet[source_text]['tweet_url']
-            topic_relavance_score = TextEmbeddingCache.get_instance().get_text_similarity_score(
-                self.topic_match_score_seed, individual_summary)
+            similarity_scores = [TextEmbeddingCache.get_instance().get_text_similarity_score(
+                seed, individual_summary) for seed in self.topic_match_score_seeds]
+            topic_relavance_score = max(similarity_scores)
             enriched_summary = {
                 "summary": individual_summary,
                 "match_score": match_score,

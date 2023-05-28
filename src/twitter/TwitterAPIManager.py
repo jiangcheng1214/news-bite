@@ -90,7 +90,7 @@ class TwitterAPIManager:
             recent_posted_tweet_id = recent_posted_tweet_with_id[1]
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 summary_text, recent_posted_tweet)
-            similarity_score = max(similarity_score, similarity)
+            most_similar_score = max(most_similar_score, similarity)
             if similarity > most_similar_score:
                 most_similar_score = similarity
                 most_similar_recent_posted_tweet = recent_posted_tweet
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230527/summary_12_enriched')
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230527/summary_24_enriched')
     # api_manager.react_to_quality_tweets_from_file(
     #     '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
     # for timeline_item in api_manager.get_api().user_timeline(count=500):

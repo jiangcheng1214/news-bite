@@ -4,7 +4,7 @@
         "tag": "technology_finance"
     },
     {
-        "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR gdp OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR interest OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking OR sp500 OR #breakingnews OR #earningreport) -please -plz -pls -retweet -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(stock OR bonds OR ipo OR policy OR funds OR invest OR trading OR market OR agreements OR portfolio OR gdp OR inflation OR unemployment OR earnings OR dividends OR government OR finance OR financial OR earning OR asset OR fiscal OR futures OR derivatives OR monetary OR economy OR forex OR commodities OR stockmarket OR breaking OR sp500 OR #breakingnews OR #earningreport) -please -plz -pls -retweet -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
@@ -12,7 +12,7 @@
         "tag": "technology_finance"
     },
     {
-        "value": "(software OR wearables OR chatgpt OR transformer OR gpt openai OR tech OR agritech OR robot OR robotics OR nanotechnology OR computing OR \"augmented reality\" OR \"virtual reality\" OR #ar OR #vr OR breakthrough OR chips OR gpu OR data OR solar)  -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
+        "value": "(software OR wearables OR chatgpt OR transformer OR gpt OR openai OR agritech OR robot OR robotics OR nanotechnology OR computing OR \"augmented reality\" OR \"virtual reality\" OR #ar OR #vr OR breakthrough OR chips OR gpu OR data OR solar)  -please -plz -pls -giveaway -is:retweet -is:reply -is:quote lang:en is:verified followers_count:200000",
         "tag": "technology_finance"
     },
     {
@@ -24,7 +24,7 @@
         "tag": "influencers"
     },
     {
-        "value": "-from:69008563 -from:754393222563102720 -from:200583835 -from:917781171466936320 -from:74039463 (adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en -is:retweet -is:reply -is:quote followers_count:200000 tweets_count:1..100000",
+        "value": "-from:69008563 -from:754393222563102720 -from:200583835 -from:917781171466936320 -from:74039463 -from:1329171068196622337 (adult OR explicit OR xxx OR porn OR nude OR sex OR erotic OR hardcore OR nsfw OR sexual OR pornographic OR \"x-rated\" OR dirty OR naughty OR fetish OR vulgar OR onlyfans OR onlyfanz OR fuck OR fxck OR anal OR fingered OR pussy OR dicks OR dick OR sugardad OR sugardaddy OR \"sugar daddy\" OR 18+ OR 21+) lang:en -is:retweet -is:reply -is:quote followers_count:200000 tweets_count:1..100000",
         "tag": "possible_porn_influencers"
     }
 ]
