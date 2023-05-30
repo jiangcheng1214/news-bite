@@ -164,15 +164,16 @@ class TwitterAPIManager:
             tweet_content = text_reply_id[0]
             reply_id = text_reply_id[1]
             url_list = urls_for_pending_tweets.pop(0)
-            hashtags = hashtags_for_pending_tweets.pop(0).split(' ')[:3]
+            hashtags = sorted(hashtags_for_pending_tweets.pop(
+                0).split(' '), key=lambda x: len(x))[:3]
             if len(hashtags) > 0:
                 hashtags_string = ''
-                while len(hashtags_string) < 30 and len(hashtags) > 0:
+                while len(hashtags_string) < 25 and len(hashtags) > 0:
                     hashtags_string = f"{hashtags_string} {hashtags.pop(0)}".strip(
                     )
                 tweet_content = f"{tweet_content}\n\n{hashtags_string}".strip()
             if len(url_list) > 0:
-                tweet_content = f"{tweet_content}\n{url[0]}".strip()
+                tweet_content = f"{tweet_content}\n{url_list[0]}".strip()
             if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
                 continue
             info(f"Posting tweet:\n{tweet_content}")
@@ -290,11 +291,44 @@ class TwitterAPIManager:
         return timeline_contents
 
 
+def getTweetsFromUser(username, max_tweets, api):
+    # Fetches Tweets from user with the handle 'username' upto max of 'max_tweets' tweets
+    last_tweet_id, num_images = 0, 0
+    try:
+        raw_tweets = api.user_timeline(
+            screen_name=username, include_rts=False, exclude_replies=True)
+    except Exception as e:
+        error('Error fetching tweets: ' + str(e))
+        return
+
+    last_tweet_id = int(raw_tweets[-1].id-1)
+
+    info('\nFetching tweets.....')
+
+    if max_tweets == 0:
+        max_tweets = 3500
+
+    while len(raw_tweets) < max_tweets:
+        sys.stdout.write("\rTweets fetched: %d" % len(raw_tweets))
+        sys.stdout.flush()
+        temp_raw_tweets = api.user_timeline(
+            screen_name=username, max_id=last_tweet_id, include_rts=False, exclude_replies=True)
+
+        if len(temp_raw_tweets) == 0:
+            break
+        else:
+            last_tweet_id = int(temp_raw_tweets[-1].id-1)
+            raw_tweets = raw_tweets + temp_raw_tweets
+
+    info('\nFinished fetching ' + str(min(len(raw_tweets), max_tweets)) + ' Tweets.')
+    return raw_tweets
+
+
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
-    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230529/summary_21_enriched')
+    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230530/summary_12_enriched')
     # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
     # similar_score_text_id = api_manager.get_most_similar_score_text_id(
     #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
