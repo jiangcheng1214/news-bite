@@ -10,10 +10,10 @@ class TwitterTopic(Enum):
 
 
 class TwitterTopicMatchScoreSeeds(Enum):
-    TECHNOLOGY_FINANCE = ['technology news', 'financial new', 'stock market', 
-                          'government regulation', 'government announcement', 
-                          'artificial intelligence', 'crypto currency', 'breaking news', 
-                          'celebrity scandal','celebrity affair']
+    TECHNOLOGY_FINANCE = ['technology news', 'financial news', 'stock market',
+                          'fiscal policy', 'monetory policy', 'federal reserve',
+                          'artificial intelligence', 'crypto currency news', 'breaking news', 
+                          'celebrity scandal', 'celebrity affair', 'technology announcement']
 
 class OpenaiModelVersion(Enum):
     GPT3_5 = 0

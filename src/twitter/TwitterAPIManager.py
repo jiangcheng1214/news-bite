@@ -136,7 +136,7 @@ class TwitterAPIManager:
                     summary_text, recent_posted_tweets_with_id)
                 reply_id = None
                 if (recent_posts_similarity):
-                    reply_candidate = max(recent_posts_similarity)[0]
+                    reply_candidate = max(recent_posts_similarity)
                     similar_score = reply_candidate[0]
                     reply_id = reply_candidate[2]
                     similar_recent_posted_tweet = reply_candidate[1]
@@ -261,12 +261,12 @@ class TwitterAPIManager:
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
-    # api_manager.upload_summary_items(
-    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230527/summary_24_enriched')
-    recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
-    similar_score_text_id = api_manager.get_most_similar_score_text_id(
-        'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
-    info(similar_score_text_id.sort(key=lambda x: x[0], reverse=True))
+    api_manager.upload_summary_items(
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230528/summary_15_enriched')
+    # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
+    # similar_score_text_id = api_manager.get_most_similar_score_text_id(
+    #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
+    # info(similar_score_text_id.sort(key=lambda x: x[0], reverse=True))
     # api_manager.react_to_quality_tweets_from_file(
     #     '/Users/chengjiang/Dev/NewsBite/src/scripts/../../data/tweet_summaries/finance/20230523/summary_24_enriched')
     # for timeline_item in api_manager.get_api().user_timeline(count=500):

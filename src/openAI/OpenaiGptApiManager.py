@@ -94,7 +94,7 @@ class OpenaiGptApiManager():
         system_setup_prompt = f"As a tweet analyzer, you will perform the following tasks:\
             1. Ignore tweets that contains question mark or exclamation mark. \
             2. Ignore advertisements and extract informational tweets. \
-            3. Ignore tweets related to countries which are less developed such as Uganda, Kenya, Indonesia etc. \
+            3. Exclude tweets pertaining to countries categorized as less developed. \
             4. Prioritize breaking news and contents from authors with large follower count. \
             Tweet inputs are in the format: (author name) (follower count) (tweet)"
 
