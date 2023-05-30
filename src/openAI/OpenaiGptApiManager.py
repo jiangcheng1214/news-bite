@@ -158,13 +158,62 @@ class OpenaiGptApiManager():
                 error(f"Error occurred: {e}")
                 time.sleep(5)
 
+    def generate_hashtags(self, summary_items: List[str]):
+        user_prompt_intro = f"Generate twitter hashtags for the following news. Make sure the number of hashtag groups returned matches the number of input tweet. Output format should be comma separated for each tweet, for example: \"#line1tag1 #line1tag2,#line2tag1 #line2tag2,#line3tag1,#line3tag2, ...\"\n"
+        summary_by_line = '\n'.join(summary_items)
+        user_prompt = f"{user_prompt_intro}{summary_by_line}"
+        estimated_token_size = len(nltk.word_tokenize(user_prompt))
+        info(
+            f"start generating hashtags for {len(summary_items)} summary items. Estimated prompt token size: {estimated_token_size}.")
+        try:
+            response = self._get_complete_gpt_response(None, user_prompt)
+            if response:
+                hashtags = response['text'].split(',')
+                info(
+                    f"hashtags generated {len(summary_items)} => {len(hashtags)} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+                if len(hashtags) > 0:
+                    return hashtags
+                else:
+                    error("Hashtag generation response is []")
+                    return []
+        except Exception as e:
+            error(f"Error occurred: {e}")
+            return []
+
+    def generate_hashtags_for_single_tweet(self, tweet: str):
+        user_prompt_intro = f"Generate up to 3 twitter hashtags for the following news. Output format should be space separated hashtags, for example: \"#hashtag1 #hashtag2 ...\"\n"
+        user_prompt = f"{user_prompt_intro}{tweet}"
+        estimated_token_size = len(nltk.word_tokenize(user_prompt))
+        info(
+            f"start generating hashtags for 1 tweet. Estimated prompt token size: {estimated_token_size}.")
+        try:
+            response = self._get_complete_gpt_response(None, user_prompt)
+            if response:
+                hashtags = response['text']
+                info(
+                    f"hashtags generated {hashtags} prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+                if hashtags:
+                    return hashtags
+                else:
+                    error("Hashtag generation response is empty")
+                    return ""
+        except Exception as e:
+            error(f"Error occurred: {e}")
+            return ""
+
 
 if __name__ == "__main__":
     # models = openai.Model.list()
     # print([m.id for m in models.data])
-    # openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
+    openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
     # tweets = open(os.path.join(os.path.dirname(__file__),
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
     #     tweets))
+    with open('/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230529/summary_21', 'r') as f:
+        lines = f.readlines()
+        hashtags = openaiGP35ApiManager.generate_hashtags(lines)
+        for i in range(len(lines)):
+            info(lines[i])
+            info(hashtags[i])
     pass

@@ -4,9 +4,10 @@ import pyshorteners
 import tweepy
 import os
 from dotenv import load_dotenv
+from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
-from utils.Utilities import get_clean_text
+from utils.Utilities import OpenaiModelVersion, get_clean_text
 from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY
 import json
 load_dotenv()
@@ -15,6 +16,8 @@ load_dotenv()
 class TwitterAPIManager:
     def __init__(self):
         self.api = self.create_api()
+        self.openaiApiManager = OpenaiGptApiManager(
+            OpenaiModelVersion.GPT3_5.value)
 
     def create_api(self):
         consumer_key = os.getenv("TWITTER_POSTING_ACCOUNT_CONSUMER_API_KEY")
@@ -32,7 +35,7 @@ class TwitterAPIManager:
         except Exception as e:
             error("Error creating API" + str(e))
             raise e
-        info("API created")
+        info("Twitter API created")
         return api
 
     def get_recent_posted_tweets(self):
@@ -98,40 +101,32 @@ class TwitterAPIManager:
         info(f"Uploading summary items from {enriched_summary_file_path}")
         post_limit = max_items if max_items else TWEET_DEFAULT_POST_LIMIT
         candidate_limit = post_limit * 2
-        tweets_to_post_with_reply_id = []
+        text_reply_id_for_pending_tweets = []
+        hashtags_for_pending_tweets = []
+        urls_for_pending_tweets = []
         recent_posted_tweets_with_id = self.get_recent_posted_tweets()
         info(f"Found {len(recent_posted_tweets_with_id)} recent posted tweets")
         with open(enriched_summary_file_path, 'r') as f:
             for l in f.readlines():
                 data = json.loads(l)
                 summary_text = data['summary']
-                if self.should_post(data, recent_posted_tweets_with_id, tweets_to_post_with_reply_id) == False:
+                if not self.should_post(data, recent_posted_tweets_with_id, text_reply_id_for_pending_tweets):
                     continue
                 tweet_content = f"{summary_text}".strip()
                 if len(data['video_urls']) > 0:
-                    try:
-                        for media_url in data['video_urls']:
-                            tweet_content = f"{tweet_content}\n{media_url}".strip(
-                            )
-                    except Exception as e:
-                        error(f"Error adding video_url {media_url}: {e}")
+                    urls_for_pending_tweets.append(data['video_urls'])
                 else:
+                    urls = []
                     if len(data['image_urls']) > 0:
-                        try:
-                            for media_url in data['image_urls']:
-                                tweet_content = f"{tweet_content}\n{media_url}".strip(
-                                )
-                        except Exception as e:
-                            error(f"Error adding image_url {media_url}: {e}")
+                        urls = data['image_urls']
                     if len(data['external_urls']) > 0:
                         try:
                             url = data['external_urls'][0]
                             short_url = self.shorten_url(url)
-                            tweet_content = f"{summary_text}\n{short_url}".strip(
-                            )
+                            urls.append(short_url)
                         except Exception as e:
                             error(f"Error shortening url {url}: {e}")
-                            continue
+                    urls_for_pending_tweets.append(urls)
                 recent_posts_similarity = self.get_most_similar_score_text_id(
                     summary_text, recent_posted_tweets_with_id)
                 reply_id = None
@@ -142,15 +137,42 @@ class TwitterAPIManager:
                     similar_recent_posted_tweet = reply_candidate[1]
                     info(
                         f"Found similar tweet for thread, score: {similar_score}, similar_recent_posted_tweet: {similar_recent_posted_tweet}, reply_id: {reply_id}")
-                tweets_to_post_with_reply_id.append([tweet_content, reply_id])
-                if len(tweets_to_post_with_reply_id) >= candidate_limit:
+                text_reply_id_for_pending_tweets.append(
+                    [tweet_content, reply_id])
+                if len(text_reply_id_for_pending_tweets) >= candidate_limit:
                     break
-        info(f"{len(tweets_to_post_with_reply_id)} candidate tweets to post")
+        hashtags_for_pending_tweets = self.openaiApiManager.generate_hashtags(
+            [t[0] for t in text_reply_id_for_pending_tweets])
+        if len(text_reply_id_for_pending_tweets) != len(hashtags_for_pending_tweets):
+            hashtags_for_pending_tweets = []
+            warn(
+                f"Hashtags length mismatch: text_reply_id_for_pending_tweets: {len(text_reply_id_for_pending_tweets)}, hashtags_for_pending_tweets: {len(hashtags_for_pending_tweets)}")
+            for i in range(len(text_reply_id_for_pending_tweets)):
+                tweet_text = text_reply_id_for_pending_tweets[i][0]
+                hashtags_for_pending_tweet = self.openaiApiManager.generate_hashtags_for_single_tweet(
+                    tweet_text)
+                hashtags_for_pending_tweets.append(hashtags_for_pending_tweet)
+        if len(text_reply_id_for_pending_tweets) != len(urls_for_pending_tweets) or len(text_reply_id_for_pending_tweets) != len(hashtags_for_pending_tweets):
+            error(
+                f"Pending tweets length mismatch: text_reply_id_for_pending_tweets: {len(text_reply_id_for_pending_tweets)}, urls_for_pending_tweets: {len(urls_for_pending_tweets)}, hashtags_for_pending_tweets: {len(hashtags_for_pending_tweets)}")
+            return
+        info(f"{len(text_reply_id_for_pending_tweets)} candidate tweets to post")
         tweet_count = 0
-        while len(tweets_to_post_with_reply_id) > 0 and tweet_count < post_limit:
-            tweet_to_post_with_reply_id = tweets_to_post_with_reply_id.pop(0)
-            tweet_content = tweet_to_post_with_reply_id[0]
-            reply_id = tweet_to_post_with_reply_id[1]
+        while len(text_reply_id_for_pending_tweets) > 0 and tweet_count < post_limit:
+            text_reply_id = text_reply_id_for_pending_tweets.pop(
+                0)
+            tweet_content = text_reply_id[0]
+            reply_id = text_reply_id[1]
+            url_list = urls_for_pending_tweets.pop(0)
+            hashtags = hashtags_for_pending_tweets.pop(0).split(' ')[:3]
+            if len(hashtags) > 0:
+                hashtags_string = ''
+                while len(hashtags_string) < 30 and len(hashtags) > 0:
+                    hashtags_string = f"{hashtags_string} {hashtags.pop(0)}".strip(
+                    )
+                tweet_content = f"{tweet_content}\n\n{hashtags_string}".strip()
+            if len(url_list) > 0:
+                tweet_content = f"{tweet_content}\n{url[0]}".strip()
             if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
                 continue
             info(f"Posting tweet:\n{tweet_content}")
@@ -162,12 +184,12 @@ class TwitterAPIManager:
                 else:
                     self.api.update_status(tweet_content)
                     info(f"Posted tweet: {tweet_content}")
-                time.sleep(10)
+                time.sleep(60)
                 tweet_count += 1
             except Exception as e:
                 error(f"Error posting tweet: {e}")
                 continue
-            time.sleep(1)
+            time.sleep(5)
         info(
             f"Posted {tweet_count} tweets successfully.")
 
@@ -257,12 +279,22 @@ class TwitterAPIManager:
     def get_api(self):
         return self.api
 
+    def get_timeline_contents(self, user_id, include_retweets=False, count=100):
+        timeline_contents = []
+        for tweet in self.api.user_timeline(user_id=user_id, count=count * 2, include_rts=include_retweets):
+            clean_text = get_clean_text(tweet.text)
+            if clean_text is not None and len(clean_text) > 0:
+                timeline_contents.append(clean_text)
+            if len(timeline_contents) >= count:
+                break
+        return timeline_contents
+
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
-    api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230528/summary_15_enriched')
+    # api_manager.upload_summary_items(
+    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230529/summary_21_enriched')
     # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
     # similar_score_text_id = api_manager.get_most_similar_score_text_id(
     #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
@@ -274,3 +306,5 @@ if __name__ == "__main__":
     #         time.time() - timeline_item.created_at.timestamp())
     #     info(f"created_at:{timeline_item.created_at}, second_since_created:{second_since_created} {timeline_item.id}, {timeline_item.in_reply_to_status_id}, {timeline_item.favorite_count}, {timeline_item.retweet_count}")
     # api_manager.untweet_and_unlike_expired_replies()
+    # for t in api_manager.get_timeline_contents(1222773302441148416):
+    #     info(t)
