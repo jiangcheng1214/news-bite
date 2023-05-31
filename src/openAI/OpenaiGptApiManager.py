@@ -159,7 +159,7 @@ class OpenaiGptApiManager():
                 time.sleep(5)
 
     def generate_hashtags(self, summary_items: List[str]):
-        user_prompt_intro = f"Generate twitter hashtags for the following news. Make sure the number of hashtag groups returned matches the number of input tweet. Output format should be comma separated for each tweet, for example: \"#line1tag1 #line1tag2,#line2tag1 #line2tag2,#line3tag1,#line3tag2, ...\"\n"
+        user_prompt_intro = f"Generate hashtags for the following news. Make sure the hashtags are not generic words. Make sure the number of hashtag groups returned matches the number of input tweet. Output format should be comma separated for each tweet, for example: \"#line1tag1 #line1tag2,#line2tag1 #line2tag2,#line3tag1,#line3tag2, ...\"\n"
         summary_by_line = '\n'.join(summary_items)
         user_prompt = f"{user_prompt_intro}{summary_by_line}"
         estimated_token_size = len(nltk.word_tokenize(user_prompt))
@@ -181,7 +181,7 @@ class OpenaiGptApiManager():
             return []
 
     def generate_hashtags_for_single_tweet(self, tweet: str):
-        user_prompt_intro = f"Generate up to 3 twitter hashtags for the following news. Output format should be space separated hashtags, for example: \"#hashtag1 #hashtag2 ...\"\n"
+        user_prompt_intro = f"Generate up to 3 twitter hashtags for the following news. Make sure the hashtags are not generic words. Output format should be space separated hashtags, for example: \"#hashtag1 #hashtag2 ...\"\n"
         user_prompt = f"{user_prompt_intro}{tweet}"
         estimated_token_size = len(nltk.word_tokenize(user_prompt))
         info(
