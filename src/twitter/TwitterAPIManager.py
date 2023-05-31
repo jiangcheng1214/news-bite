@@ -291,39 +291,6 @@ class TwitterAPIManager:
         return timeline_contents
 
 
-def getTweetsFromUser(username, max_tweets, api):
-    # Fetches Tweets from user with the handle 'username' upto max of 'max_tweets' tweets
-    last_tweet_id, num_images = 0, 0
-    try:
-        raw_tweets = api.user_timeline(
-            screen_name=username, include_rts=False, exclude_replies=True)
-    except Exception as e:
-        error('Error fetching tweets: ' + str(e))
-        return
-
-    last_tweet_id = int(raw_tweets[-1].id-1)
-
-    info('\nFetching tweets.....')
-
-    if max_tweets == 0:
-        max_tweets = 3500
-
-    while len(raw_tweets) < max_tweets:
-        sys.stdout.write("\rTweets fetched: %d" % len(raw_tweets))
-        sys.stdout.flush()
-        temp_raw_tweets = api.user_timeline(
-            screen_name=username, max_id=last_tweet_id, include_rts=False, exclude_replies=True)
-
-        if len(temp_raw_tweets) == 0:
-            break
-        else:
-            last_tweet_id = int(temp_raw_tweets[-1].id-1)
-            raw_tweets = raw_tweets + temp_raw_tweets
-
-    info('\nFinished fetching ' + str(min(len(raw_tweets), max_tweets)) + ' Tweets.')
-    return raw_tweets
-
-
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
