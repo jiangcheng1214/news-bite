@@ -156,6 +156,14 @@ class TwitterAPIManager:
             error(
                 f"Pending tweets length mismatch: text_reply_id_for_pending_tweets: {len(text_reply_id_for_pending_tweets)}, urls_for_pending_tweets: {len(urls_for_pending_tweets)}, hashtags_for_pending_tweets: {len(hashtags_for_pending_tweets)}")
             return
+        self.post_tweets(text_reply_id_for_pending_tweets,
+                         urls_for_pending_tweets, hashtags_for_pending_tweets, post_limit)
+
+    def post_tweets(self, text_reply_id_list, url_group_list, hashtag_list, limit):
+        text_reply_id_for_pending_tweets = text_reply_id_list
+        urls_for_pending_tweets = url_group_list
+        hashtags_for_pending_tweets = hashtag_list
+        post_limit = min(limit, len(text_reply_id_for_pending_tweets))
         info(f"{len(text_reply_id_for_pending_tweets)} candidate tweets to post")
         tweet_count = 0
         while len(text_reply_id_for_pending_tweets) > 0 and tweet_count < post_limit:
@@ -193,6 +201,10 @@ class TwitterAPIManager:
             time.sleep(5)
         info(
             f"Posted {tweet_count} tweets successfully.")
+        if (tweet_count == 0):
+            error("No tweets posted, retrying in 60 seconds...")
+            time.sleep(60)
+            return self.post_tweets(text_reply_id_list, url_group_list, hashtag_list, limit)
 
     def clean_text(self, text: str):
         cleaned_text = text.strip()
@@ -294,8 +306,8 @@ class TwitterAPIManager:
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
-    # api_manager.upload_summary_items(
-    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230530/summary_12_enriched')
+    api_manager.upload_summary_items(
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230530/summary_24_enriched')
     # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
     # similar_score_text_id = api_manager.get_most_similar_score_text_id(
     #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)

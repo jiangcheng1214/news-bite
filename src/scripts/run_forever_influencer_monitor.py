@@ -27,6 +27,8 @@ monitored_topics = [TwitterTopic.INFLUENCERS.value,
 for monitored_topic in monitored_topics:
     if os.path.exists(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic)):
         for influencer_data_file in os.listdir(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic)):
+            if not (influencer_data_file.startswith('english_') or influencer_data_file.startswith('chinese_')):
+                continue
             for line in open(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic, influencer_data_file)):
                 influencer_data_json = json.loads(line)
                 deteceted_influencers[influencer_data_json['id']] = 1
