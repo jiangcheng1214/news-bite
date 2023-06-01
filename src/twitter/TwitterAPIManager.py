@@ -104,6 +104,7 @@ class TwitterAPIManager:
         text_reply_id_for_pending_tweets = []
         hashtags_for_pending_tweets = []
         urls_for_pending_tweets = []
+        topic_for_pending_tweets = []
         recent_posted_tweets_with_id = self.get_recent_posted_tweets()
         info(f"Found {len(recent_posted_tweets_with_id)} recent posted tweets")
         with open(enriched_summary_file_path, 'r') as f:
@@ -127,6 +128,23 @@ class TwitterAPIManager:
                         except Exception as e:
                             error(f"Error shortening url {url}: {e}")
                     urls_for_pending_tweets.append(urls)
+                try:
+                    topic = ""
+                    tweet_topic = data['topic']
+                    if tweet_topic == 'technology news' or tweet_topic == 'artificial intelligence' or tweet_topic == 'technology announcement':
+                        topic = 'Technology'
+                    elif tweet_topic == 'financial news' or tweet_topic == 'stock market':
+                        topic = "Finance"
+                    elif tweet_topic == 'fiscal policy' or tweet_topic == 'monetory policy' or tweet_topic == 'federal reserve':
+                        topic = 'Policy'
+                    elif tweet_topic == 'celebrity scandal' or tweet_topic == 'celebrity affair' or tweet_topic == 'breaking news':
+                        topic = 'BREAKING NEWS'
+                    else:
+                        warn(f"Unknown topic {tweet_topic}")
+                except Exception as e:
+                    error(f"Error getting topic {e}")
+                    topic = ""
+                topic_for_pending_tweets.append(topic)
                 recent_posts_similarity = self.get_most_similar_score_text_id(
                     summary_text, recent_posted_tweets_with_id)
                 reply_id = None
@@ -152,17 +170,18 @@ class TwitterAPIManager:
                 hashtags_for_pending_tweet = self.openaiApiManager.generate_hashtags_for_single_tweet(
                     tweet_text)
                 hashtags_for_pending_tweets.append(hashtags_for_pending_tweet)
-        if len(text_reply_id_for_pending_tweets) != len(urls_for_pending_tweets) or len(text_reply_id_for_pending_tweets) != len(hashtags_for_pending_tweets):
+        if len(text_reply_id_for_pending_tweets) != len(urls_for_pending_tweets) or len(text_reply_id_for_pending_tweets) != len(hashtags_for_pending_tweets or len(text_reply_id_for_pending_tweets) != len(topic_for_pending_tweets)):
             error(
-                f"Pending tweets length mismatch: text_reply_id_for_pending_tweets: {len(text_reply_id_for_pending_tweets)}, urls_for_pending_tweets: {len(urls_for_pending_tweets)}, hashtags_for_pending_tweets: {len(hashtags_for_pending_tweets)}")
+                f"Pending tweets length mismatch: text_reply_id_for_pending_tweets: {len(text_reply_id_for_pending_tweets)}, urls_for_pending_tweets: {len(urls_for_pending_tweets)}, hashtags_for_pending_tweets: {len(hashtags_for_pending_tweets)}, topic_for_pending_tweets: {len(topic_for_pending_tweets)}")
             return
-        self.post_tweets(text_reply_id_for_pending_tweets,
-                         urls_for_pending_tweets, hashtags_for_pending_tweets, post_limit)
+        self._assamble_and_post_tweets(text_reply_id_for_pending_tweets,
+                                       urls_for_pending_tweets, hashtags_for_pending_tweets, topic_for_pending_tweets, post_limit)
 
-    def post_tweets(self, text_reply_id_list, url_group_list, hashtag_list, limit):
+    def _assamble_and_post_tweets(self, text_reply_id_list, url_group_list, hashtag_list, topic_list, limit):
         text_reply_id_for_pending_tweets = text_reply_id_list
         urls_for_pending_tweets = url_group_list
         hashtags_for_pending_tweets = hashtag_list
+        topics_for_pending_tweets = topic_list
         post_limit = min(limit, len(text_reply_id_for_pending_tweets))
         info(f"{len(text_reply_id_for_pending_tweets)} candidate tweets to post")
         tweet_count = 0
@@ -170,6 +189,9 @@ class TwitterAPIManager:
             text_reply_id = text_reply_id_for_pending_tweets.pop(
                 0)
             tweet_content = text_reply_id[0]
+            topic = topics_for_pending_tweets.pop(0)
+            if len(topic) > 0:
+                tweet_content = f"[{topic}] {tweet_content}".strip()
             reply_id = text_reply_id[1]
             url_list = urls_for_pending_tweets.pop(0)
             hashtags = sorted(hashtags_for_pending_tweets.pop(
@@ -204,7 +226,7 @@ class TwitterAPIManager:
         if (tweet_count == 0):
             error("No tweets posted, retrying in 60 seconds...")
             time.sleep(60)
-            return self.post_tweets(text_reply_id_list, url_group_list, hashtag_list, limit)
+            return self._assamble_and_post_tweets(text_reply_id_list, url_group_list, hashtag_list, limit)
 
     def clean_text(self, text: str):
         cleaned_text = text.strip()

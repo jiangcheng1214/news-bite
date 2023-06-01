@@ -62,6 +62,11 @@ class TwitterFilteredStreamer:
                         except json.JSONDecodeError as e:
                             info(
                                 f"Failed to load json due to json.JSONDecodeError. {line}")
+                            continue
+                        except KeyError as e:
+                            info(
+                                f"Failed to load json due to KeyError. {line}")
+                            continue
                         try:
                             for matching_rule_tag in matching_rule_tags:
                                 self.data_callback(

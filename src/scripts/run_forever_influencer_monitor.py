@@ -30,8 +30,11 @@ for monitored_topic in monitored_topics:
             if not (influencer_data_file.startswith('english_') or influencer_data_file.startswith('chinese_')):
                 continue
             for line in open(os.path.join(os.path.dirname(__file__), '..', '..', 'data', monitored_topic, influencer_data_file)):
-                influencer_data_json = json.loads(line)
-                deteceted_influencers[influencer_data_json['id']] = 1
+                try:
+                    influencer_data_json = json.loads(line)
+                    deteceted_influencers[influencer_data_json['id']] = 1
+                except:
+                    continue
 info(f'Loaded {len(deteceted_influencers)} influencers from file')
 total_received = 0
 file_writer_by_lang_by_topic = {
