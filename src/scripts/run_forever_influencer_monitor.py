@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from dotenv import load_dotenv
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
 from utils.Constants import TWITTER_BEARER_TOKEN_DEV_EVAR_KEY
@@ -93,8 +94,15 @@ def callback(tweet, matching_topic):
     deteceted_influencers[author_id] = 1
 
 
-twitterFilterRulesManager = TwitterFilterRulesManager(
-    bearer_token, monitored_topics)
-streamer = TwitterFilteredStreamer(
-    bearer_token, twitterFilterRulesManager, callback)
-streamer.start_stream()
+if __name__ == "__main__":
+    while 1:
+        try:
+            twitterFilterRulesManager = TwitterFilterRulesManager(
+                bearer_token, monitored_topics)
+            streamer = TwitterFilteredStreamer(
+                bearer_token, twitterFilterRulesManager, callback)
+            streamer.start_stream()
+        except Exception as e:
+            warn(f'Exception {e} occurred. Restarting...')
+            time.sleep(10)
+            continue

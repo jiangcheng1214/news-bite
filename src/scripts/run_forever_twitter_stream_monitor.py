@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from dotenv import load_dotenv
 from twitter.TwitterFilterRulesManager import TwitterFilterRulesManager
 from utils.Constants import TWITTER_BEARER_TOKEN_EVAR_KEY, RAW_TWEET_FILE_PREFIX
@@ -50,8 +51,15 @@ def callback(tweet, matching_topic):
     TextEmbeddingCache.get_instance().embedding_of(tweet['text'])
 
 
-twitterFilterRulesManager = TwitterFilterRulesManager(
-    bearer_token, [monitored_topic])
-streamer = TwitterFilteredStreamer(
-    bearer_token, twitterFilterRulesManager, callback)
-streamer.start_stream()
+if __name__ == '__main__':
+    while 1:
+        try:
+            twitterFilterRulesManager = TwitterFilterRulesManager(
+                bearer_token, [monitored_topic])
+            streamer = TwitterFilteredStreamer(
+                bearer_token, twitterFilterRulesManager, callback)
+            streamer.start_stream()
+        except Exception as e:
+            warn(f'Exception {e} occurred. Restarting stream...')
+            time.sleep(10)
+            continue
