@@ -56,8 +56,9 @@ class TwitterFilteredStreamer:
                             continue
                         try:
                             data = json.loads(line)
-                            matching_rule_tags = set(
-                                [r['tag'] for r in data['matching_rules']])
+                            matching_rules = data['matching_rules']
+                            matching_tags = [r['tag'] for r in matching_rules]
+                            matching_tags_set = set(matching_tags)
                             tweet_data = data['data']
                         except json.JSONDecodeError as e:
                             info(
@@ -68,7 +69,7 @@ class TwitterFilteredStreamer:
                                 f"Failed to load json due to KeyError. {line}")
                             continue
                         try:
-                            for matching_rule_tag in matching_rule_tags:
+                            for matching_rule_tag in matching_tags_set:
                                 self.data_callback(
                                     tweet_data, matching_rule_tag)
                         except Exception as e:
