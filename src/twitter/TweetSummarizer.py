@@ -59,6 +59,8 @@ class TweetSummarizer:
                     info(f"TypeError: {line}")
 
         info(f"start generating daily summary for {self.topic}")
+        single_summary_text_list = [clean_summary(
+            t) for t in single_summary_text_list]
         aggregated_summary_item_list = self.openaiApiManager.merge_summary_items(
             single_summary_text_list)
         if not os.path.exists(os.path.dirname(output_file_path)):

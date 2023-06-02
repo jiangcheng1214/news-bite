@@ -45,7 +45,7 @@ class TextEmbeddingCache:
                 warn(
                     f"Embedding cache size {len(self.embedding_dict_cache)} is larger than {MAX_EMBEDDING_CACHE_SIZE}")
                 self.embedding_dict_cache = {}
-            info(f"Embedding cache miss for {text}")
+            # info(f"Embedding cache miss for {text}")
             time_elapsed = time.time() - self.last_request_time
             if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
                 time.sleep(
@@ -55,8 +55,8 @@ class TextEmbeddingCache:
             self.last_request_time = time.time()
             if time.time() - self.last_save_time > REDIS_SAVE_EMBEDDING_CACHE_INTERVAL_SEC:
                 self.save()
-        else:
-            info(f"Embedding cache hit for {text}")
+        # else:
+        #     info(f"Embedding cache hit for {text}")
         return self.embedding_dict_cache[clean_text]
 
     def get_text_similarity_score(self, text1: str, text2: str):

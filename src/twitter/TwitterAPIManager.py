@@ -199,7 +199,9 @@ class TwitterAPIManager:
             if len(hashtags) > 0:
                 hashtags_string = ''
                 while len(hashtags_string) < 25 and len(hashtags) > 0:
-                    hashtags_string = f"{hashtags_string} {hashtags.pop(0)}".strip(
+                    clean_hashtag = hashtags.pop(0)
+                    clean_hashtag = clean_hashtag.replace('-', '')
+                    hashtags_string = f"{hashtags_string} {clean_hashtag}".strip(
                     )
                 tweet_content = f"{tweet_content}\n\n{hashtags_string}".strip()
             if len(url_list) > 0:
@@ -329,7 +331,7 @@ if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230530/summary_24_enriched')
+        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
     # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
     # similar_score_text_id = api_manager.get_most_similar_score_text_id(
     #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)

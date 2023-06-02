@@ -132,7 +132,11 @@ class OpenaiGptApiManager():
         current_group = []
         while 1:
             while all_summary_items and len(nltk.word_tokenize('\n'.join(current_group))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
-                current_group.append(all_summary_items.pop(0))
+                item = all_summary_items.pop(0)
+                if len(item) > 0:
+                    current_group.append(item)
+                else:
+                    continue
             user_prompt_intro = f"Merge similar news and generate up to 20 news in the language that is easy to understand. Inputs are one news per line:\n"
             summary_by_line = '\n'.join(current_group)
             user_prompt = f"{user_prompt_intro}{summary_by_line}"
