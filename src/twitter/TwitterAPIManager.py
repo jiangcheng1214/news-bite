@@ -107,9 +107,13 @@ class TwitterAPIManager:
         topic_for_pending_tweets = []
         recent_posted_tweets_with_id = self.get_recent_posted_tweets()
         info(f"Found {len(recent_posted_tweets_with_id)} recent posted tweets")
+        source_tweet_url_for_pending_tweets = set()
         with open(enriched_summary_file_path, 'r') as f:
             for l in f.readlines():
                 data = json.loads(l)
+                source_tweet_url = data['tweet_url']
+                if source_tweet_url in source_tweet_url_for_pending_tweets:
+                    continue
                 summary_text = data['summary']
                 if not self.should_post(data, recent_posted_tweets_with_id, text_reply_id_for_pending_tweets):
                     continue
@@ -157,6 +161,7 @@ class TwitterAPIManager:
                         f"Found similar tweet for thread, score: {similar_score}, similar_recent_posted_tweet: {similar_recent_posted_tweet}, reply_id: {reply_id}")
                 text_reply_id_for_pending_tweets.append(
                     [tweet_content, reply_id])
+                source_tweet_url_for_pending_tweets.add(source_tweet_url)
                 if len(text_reply_id_for_pending_tweets) >= candidate_limit:
                     break
         hashtags_for_pending_tweets = self.openaiApiManager.generate_hashtags(
@@ -201,6 +206,7 @@ class TwitterAPIManager:
                 while len(hashtags_string) < 25 and len(hashtags) > 0:
                     clean_hashtag = hashtags.pop(0)
                     clean_hashtag = clean_hashtag.replace('-', '')
+                    clean_hashtag = clean_hashtag.replace('.', '')
                     hashtags_string = f"{hashtags_string} {clean_hashtag}".strip(
                     )
                 tweet_content = f"{tweet_content}\n\n{hashtags_string}".strip()
