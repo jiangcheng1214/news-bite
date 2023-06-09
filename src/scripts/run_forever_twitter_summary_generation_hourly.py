@@ -14,8 +14,7 @@ usage: python start_twitter_summary_generation.py
 finance_tweet_summarizer = TweetSummarizer(os.path.join(os.path.dirname(
     __file__),  '..', '..', 'data', 'tweets'), TwitterTopic.TECHNOLOGY_FINANCE.value)
 
-# we aggregate news and post to twitter every 3 hours
-news_summary_hour_interval = 3
+news_summary_hour_interval = 2
 
 
 def get_hourly_summary_file_paths(topic: str, date, start_hour, end_hour):

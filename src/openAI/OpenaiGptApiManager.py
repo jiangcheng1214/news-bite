@@ -137,7 +137,7 @@ class OpenaiGptApiManager():
                     current_group.append(item)
                 else:
                     continue
-            user_prompt_intro = f"Merge similar news and generate up to 20 news in the language that is easy to understand. Inputs are one news per line:\n"
+            user_prompt_intro = f"Extract breaking news and generate up to 20 news in the language that is easy to understand. Inputs are one news per line:\n"
             summary_by_line = '\n'.join(current_group)
             user_prompt = f"{user_prompt_intro}{summary_by_line}"
             estimated_token_size = len(nltk.word_tokenize(user_prompt))
