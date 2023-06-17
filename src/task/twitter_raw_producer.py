@@ -49,7 +49,11 @@ def callback(tweet, matching_topic):
     # cache the tweet text embedding for later use
     TextEmbeddingCache.get_instance().embedding_of(tweet['text'])
     redis_conn = RedisClient().connect()
-    redis_conn.xadd('twitter_stream', {'tweet': json.dumps(tweet), 'authorMetadata': json.dumps(author_metadata), 'tweet_type': matching_topic})
+    redis_conn.xadd('twitter_stream', {
+        'tweet': json.dumps(tweet), 
+        'authorMetadata': json.dumps(author_metadata), 
+        'tweet_type': matching_topic
+    })
 
 streamer = TwitterFilteredStreamer(key, monitored_topic, callback)
 streamer.start_stream()
