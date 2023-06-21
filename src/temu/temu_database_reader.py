@@ -36,8 +36,6 @@ where
     and json_extract(price_info, '$.market_price') > 3000
     and json_extract(goods_comment, '$.goods_score') > 4.5
     and json_extract(goods_comment, '$.comment_num') > 2000
-ORDER BY json_extract(goods_comment, '$.goods_score') DESC
-LIMIT 100
 '''
         cursor.execute(sql)
         results = cursor.fetchall()
