@@ -33,10 +33,10 @@ FROM
     products
 where
 	json_extract(price_info, '$.currency') = 'USD'
-    and json_extract(price_info, '$.market_price') > 3000
-    and json_extract(goods_comment, '$.goods_score') > 4.5
-    and json_extract(goods_comment, '$.comment_num') > 2000
 '''
+    # and json_extract(price_info, '$.market_price') > 3000
+    # and json_extract(goods_comment, '$.goods_score') > 4.5
+    # and json_extract(goods_comment, '$.comment_num') > 2000
         cursor.execute(sql)
         results = cursor.fetchall()
         return results
@@ -74,8 +74,9 @@ def find_best_match_and_score(candidates: List, target: str, maapping_func=lambd
 if __name__ == '__main__':
     api_manager = TwitterAPIManager()
     products_with_recommendation_reason = api_manager.generate_product_recommendation_for_user(
-        '1205226529455632385')
-    products = [x.split(' - ')[1].strip() for x in products_with_recommendation_reason]
+        '35762475')
+    products = [x.split(' - ')[1].strip()
+                for x in products_with_recommendation_reason]
     temu_products = all_quality_products()
     for product in products:
         best_match_product, best_score = find_best_match_and_score(
