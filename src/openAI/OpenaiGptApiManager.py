@@ -19,17 +19,20 @@ class OpenaiGptApiManager():
         # self.embedding_model = "text-embedding-ada-002"
         self.summarize_ratio = 0.2
         if gpt_model_version == OpenaiModelVersion.GPT3_5.value:
-            self.gpt_model_name = "gpt-3.5-turbo"
-            # 4096 tokens for gpt-3.5-turbo
-            self.token_size_limit = 4096
-            # 60% of the token size limit will be used for the prompt
+            self.gpt_model_name = "gpt-3.5-turbo-16k-0613"
+            # 4096 token limit for gpt-3.5-turbo
+            # 16k token limit for gpt-3.5-turbo-16k-0613
+            self.token_size_limit = 16000
+            # x of the token size limit will be used for the prompt
             self.token_size_limit_usage_ratio_for_summarization = 0.5
+            self.token_size_limit_usage_ratio_for_product_recommendation = 0.8
         elif gpt_model_version == OpenaiModelVersion.GPT4.value:
             self.gpt_model_name = "gpt-4"
-            # 4096 tokens for gpt-4
+            # 8k tokens for gpt-4
             self.token_size_limit = 8192
             # x of the token size limit will be used for the prompt
             self.token_size_limit_usage_ratio_for_summarization = 0.7
+            self.token_size_limit_usage_ratio_for_product_recommendation = 0.9
 
     def _get_complete_gpt_response(self, system_prompt: str, user_prompt: str, num_retries=3):
         for i in range(num_retries):
@@ -89,6 +92,39 @@ class OpenaiGptApiManager():
         error(
             f"OpenAI API Error: Failed to get response after {num_retries} retries")
         return None
+
+    def product_recommend_based_on_user_like_contents(self, user_like_contents: List[str]):
+        user_prompt_intro = "Act as a product recommendation system, you will recommend 3 products that the users would like to buy based on the contents they like. "\
+            "You may not recommend products that cannot be found from online shopping websites. "\
+            "The output should be in the format of 'index' - 'product name' - 'the reason why you recommend'"\
+            "Following is a list of content that a user liked, one content per line:"
+        contents_for_gpt = []
+        while user_like_contents and len(nltk.word_tokenize('\n'.join(contents_for_gpt))) < self.token_size_limit * self.token_size_limit_usage_ratio_for_summarization:
+            item = user_like_contents.pop(0)
+            if len(item) > 0:
+                contents_for_gpt.append(item.strip())
+            else:
+                continue
+        contents = '\n'.join(contents_for_gpt)
+        user_prompt = f"{user_prompt_intro}{contents}"
+        estimated_token_size = len(nltk.word_tokenize(user_prompt))
+        info(
+            f"start generating product recommendation based on {len(contents_for_gpt)} contents. Estimated prompt token size: {estimated_token_size}.")
+        try:
+            response = self._get_complete_gpt_response(None, user_prompt)
+            if response:
+                products = [p.strip()
+                            for p in response['text'].split('\n') if len(p.strip()) > 0]
+                info(
+                    f"{len(products)} products returned. prompt_tokens:{response['usage']['prompt_tokens']} completion_tokens:{response['usage']['completion_tokens']} total_tokens:{response['usage']['total_tokens']}")
+                if len(products) > 0:
+                    return products
+                else:
+                    error("products generation response is []")
+                    return []
+        except Exception as e:
+            error(f"Error occurred: {e}")
+            return []
 
     def summarize_tweets(self, tweets: List[str]):
         system_setup_prompt = f"As a tweet analyzer, you will perform the following tasks:\
@@ -207,17 +243,17 @@ class OpenaiGptApiManager():
 
 
 if __name__ == "__main__":
-    # models = openai.Model.list()
-    # print([m.id for m in models.data])
-    openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
+    models = openai.Model.list()
+    print([m.id for m in models.data])
+    # openaiGP35ApiManager = OpenaiGptApiManager(OpenaiModelVersion.GPT3_5.value)
     # tweets = open(os.path.join(os.path.dirname(__file__),
     #               '../../data_example/tweets/crypto_currency/20230331/clean_11'), 'r').readlines()
     # info(openaiGP35ApiManager.summarize_tweets(
     #     tweets))
-    with open('/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230529/summary_21', 'r') as f:
-        lines = f.readlines()
-        hashtags = openaiGP35ApiManager.generate_hashtags(lines)
-        for i in range(len(lines)):
-            info(lines[i])
-            info(hashtags[i])
+    # with open('/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230529/summary_21', 'r') as f:
+    #     lines = f.readlines()
+    #     hashtags = openaiGP35ApiManager.generate_hashtags(lines)
+    #     for i in range(len(lines)):
+    #         info(lines[i])
+    #         info(hashtags[i])
     pass

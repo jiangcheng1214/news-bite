@@ -45,7 +45,7 @@ class TextEmbeddingCache:
                 warn(
                     f"Embedding cache size {len(self.embedding_dict_cache)} is larger than {MAX_EMBEDDING_CACHE_SIZE}")
                 self.embedding_dict_cache = {}
-            # info(f"Embedding cache miss for {text}")
+            info(f"Embedding cache miss for {text}")
             time_elapsed = time.time() - self.last_request_time
             if time_elapsed < MINIMAL_OPENAI_API_CALL_INTERVAL_SEC:
                 time.sleep(
@@ -55,8 +55,8 @@ class TextEmbeddingCache:
             self.last_request_time = time.time()
             if time.time() - self.last_save_time > REDIS_SAVE_EMBEDDING_CACHE_INTERVAL_SEC:
                 self.save()
-        # else:
-        #     info(f"Embedding cache hit for {text}")
+        else:
+            info(f"Embedding cache hit for {text}")
         return self.embedding_dict_cache[clean_text]
 
     def get_text_similarity_score(self, text1: str, text2: str):
@@ -65,14 +65,15 @@ class TextEmbeddingCache:
         similarity = np.dot(text1_embedding, text2_embedding)
         return similarity
 
-    def find_best_match_and_score(self, candidates: List[str], target: str):
+    def find_best_match_and_score(self, candidates: List, target: str, maapping_func=lambda x: x):
         best_score = 0
-        best_match = ""
-        for source in candidates:
-            similarity = self.get_text_similarity_score(source, target)
+        best_match = None
+        for candidate in candidates:
+            candidate_text = maapping_func(candidate)
+            similarity = self.get_text_similarity_score(candidate_text, target)
             if similarity > best_score:
                 best_score = similarity
-                best_match = source
+                best_match = candidate
         return best_match, best_score
 
     def save(self):

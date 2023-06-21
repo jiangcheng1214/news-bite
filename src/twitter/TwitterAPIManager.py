@@ -8,7 +8,7 @@ from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
 from utils.Utilities import OpenaiModelVersion, get_clean_text
-from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY
+from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY, TWITTER_BEARER_TOKEN_EVAR_KEY
 import json
 load_dotenv()
 
@@ -322,22 +322,30 @@ class TwitterAPIManager:
     def get_api(self):
         return self.api
 
-    def get_timeline_contents(self, user_id, include_retweets=False, count=100):
+    def get_timeline_contents(self, user_id, include_retweets=False, exclude_replies=True, limit=None):
         timeline_contents = []
-        for tweet in self.api.user_timeline(user_id=user_id, count=count * 2, include_rts=include_retweets):
+        for tweet in self.api.user_timeline(user_id=user_id, count=200, include_rts=include_retweets, exclude_replies=exclude_replies):
             clean_text = get_clean_text(tweet.text)
             if clean_text is not None and len(clean_text) > 0:
                 timeline_contents.append(clean_text)
-            if len(timeline_contents) >= count:
+            if limit and len(timeline_contents) >= limit:
                 break
         return timeline_contents
+
+    def generate_product_recommendation_for_user(self, user_id):
+        tweets = self.get_timeline_contents(user_id)
+        info(
+            f"Getting product recommendations for user {user_id}, tweet count: {len(tweets)}")
+        products = self.openaiApiManager.product_recommend_based_on_user_like_contents(
+            tweets)
+        return products
 
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager()
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
-    api_manager.upload_summary_items(
-        '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
+    # api_manager.upload_summary_items(
+    #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
     # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
     # similar_score_text_id = api_manager.get_most_similar_score_text_id(
     #     'US government striving to prevent default on national debt after budget breakthrough', recent_posted_tweets_with_id)
@@ -349,5 +357,22 @@ if __name__ == "__main__":
     #         time.time() - timeline_item.created_at.timestamp())
     #     info(f"created_at:{timeline_item.created_at}, second_since_created:{second_since_created} {timeline_item.id}, {timeline_item.in_reply_to_status_id}, {timeline_item.favorite_count}, {timeline_item.retweet_count}")
     # api_manager.untweet_and_unlike_expired_replies()
-    # for t in api_manager.get_timeline_contents(1222773302441148416):
-    #     info(t)
+    # metadata = api_manager.get_api().get_user(user_id=187756121)
+    # info(metadata)
+    # openaiApiManager = OpenaiGptApiManager(
+    #     OpenaiModelVersion.GPT3_5.value)
+    # all_twitter_user_id_url = []
+    # with open('/Users/chengjiang/Dev/NewsBite/data/influencers/english_20230527', 'r') as f:
+    #     for line in f.readlines():
+    #         json_data = json.loads(line)
+    #         id = json_data['id']
+    #         url = json_data['user_url']
+    #         all_twitter_user_id_url.append((id, url))
+    #         if len(all_twitter_user_id_url) == 10:
+    #             break
+    # for (id, url) in all_twitter_user_id_url:
+    #     products = api_manager.generate_product_recommendation_for_user(id)
+    #     info(f"{products} for user {url}")
+    products = api_manager.generate_product_recommendation_for_user(
+        '1205226529455632385')
+    info(f"{products}")
