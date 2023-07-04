@@ -49,4 +49,4 @@ if not os.path.exists(enriched_summary_file_path):
         TwitterTopic.TECHNOLOGY_FINANCE.value, date, hour - news_summary_hour_interval, hour)
     finance_tweet_summarizer.enrich_tweet_summary(
         raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
-    # TwitterAPIManager().upload_summary_items(enriched_summary_file_path)
+    # TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech).upload_summary_items(enriched_summary_file_path)

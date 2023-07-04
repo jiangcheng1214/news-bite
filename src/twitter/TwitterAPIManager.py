@@ -7,26 +7,54 @@ from dotenv import load_dotenv
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
-from utils.Utilities import OpenaiModelVersion, get_clean_text
+from utils.Utilities import OpenaiModelVersion, get_clean_text, shorten_url
 from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY, TWITTER_BEARER_TOKEN_EVAR_KEY
 import json
+from enum import Enum
+from typing import List
 load_dotenv()
 
 
+class TwitterAPIManagerAccountType(Enum):
+    TwitterAPIManagerAccountTypeCrypto = 0
+    TwitterAPIManagerAccountTypeFinTech = 1
+
+
+class TwitterPostCandidate:
+    def __init__(self, initial_dict: dict):
+        self.news_url = initial_dict.get("news_url")
+        self.image_url = initial_dict.get("image_url")
+        self.news_content = initial_dict.get("news_content")
+        self.hashtags = initial_dict.get("hashtags")
+        self.sentiment = initial_dict.get("sentiment")
+        self.is_event = initial_dict.get("is_event")
+
+
 class TwitterAPIManager:
-    def __init__(self):
-        self.api = self.create_api()
+    def __init__(self, accountType: TwitterAPIManagerAccountType):
+        self.api = self.create_api(accountType)
         self.openaiApiManager = OpenaiGptApiManager(
             OpenaiModelVersion.GPT3_5.value)
 
-    def create_api(self):
-        consumer_key = os.getenv("TWITTER_POSTING_ACCOUNT_CONSUMER_API_KEY")
-        consumer_secret = os.getenv(
-            "TWITTER_POSTING_ACCOUNT_CONSUMER_API_SECRET")
-        access_token = os.getenv("TWITTER_POSTING_ACCOUNT_ACCESS_TOKEN")
-        access_token_secret = os.getenv(
-            "TWITTER_POSTING_ACCOUNT_ACCESS_SECRET")
+    def create_api(self, accountType: TwitterAPIManagerAccountType):
+        if accountType == TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto:
+            consumer_key = os.getenv("TWITTER_CRYPTO_ACCOUNT_CONSUMER_API_KEY")
+            consumer_secret = os.getenv(
+                "TWITTER_CRYPTO_ACCOUNT_CONSUMER_API_SECRET")
+            access_token = os.getenv("TWITTER_CRYPTO_ACCOUNT_ACCESS_TOKEN")
+            access_token_secret = os.getenv(
+                "TWITTER_CRYPTO_ACCOUNT_ACCESS_SECRET")
 
+        elif accountType == TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech:
+            consumer_key = os.getenv(
+                "TWITTER_FINTECH_ACCOUNT_CONSUMER_API_KEY")
+            consumer_secret = os.getenv(
+                "TWITTER_FINTECH_ACCOUNT_CONSUMER_API_SECRET")
+            access_token = os.getenv("TWITTER_FINTECH_ACCOUNT_ACCESS_TOKEN")
+            access_token_secret = os.getenv(
+                "TWITTER_FINTECH_ACCOUNT_ACCESS_SECRET")
+        else:
+            raise Exception("Invalid account type")
         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
         auth.set_access_token(access_token, access_token_secret)
         api = tweepy.API(auth, wait_on_rate_limit=True)
@@ -38,7 +66,7 @@ class TwitterAPIManager:
         info("Twitter API created")
         return api
 
-    def get_recent_posted_tweets(self):
+    def get_recent_posted_tweets(self) -> List:
         recent_posted_tweets = []
         for tweet in tweepy.Cursor(self.api.user_timeline).items():
             try:
@@ -51,6 +79,104 @@ class TwitterAPIManager:
                 error("Error getting posted tweet" + str(e))
                 continue
         return recent_posted_tweets
+
+    def get_most_similar_posted_tweet_id_and_similarity_score(self, content):
+        recent_posted_tweets = self.get_recent_posted_tweets()
+        most_similar_posted_tweet_id = None
+        most_similar_posted_tweet_similarity_score = 0
+        for recent_posted_tweet in recent_posted_tweets:
+            recent_posted_tweet_content = recent_posted_tweet[0].replace(
+                '\n', ' ')
+            similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
+                content, recent_posted_tweet_content)
+            if similarity > most_similar_posted_tweet_similarity_score:
+                most_similar_posted_tweet_similarity_score = similarity
+                most_similar_posted_tweet_id = recent_posted_tweet[1]
+        return most_similar_posted_tweet_id, most_similar_posted_tweet_similarity_score
+
+    def post_tweets(self, tweets: List[TwitterPostCandidate], post_limit: int = TWEET_DEFAULT_POST_LIMIT):
+        if len(tweets) == 0:
+            return
+        post_count = 0
+        for tweet in tweets:
+            try:
+                posted = self.post_tweet(tweet.news_content, tweet.hashtags,
+                                         tweet.news_url, tweet.image_url, tweet.sentiment, tweet.is_event)
+                if posted:
+                    post_count += 1
+            except Exception as e:
+                error("Error posting tweet" + str(e))
+                continue
+            if post_count >= post_limit:
+                break
+        info(f'Posted {post_count} tweets')
+
+    def post_tweet(self, content: str, hashtags: List[str], news_url: str, media_url: str, sentiment: str = None, is_event: bool = False):
+        try:
+            tweet_content = content
+            # Make sure tweet content is not too long
+            if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
+                warn(f'Tweet content too long: {tweet_content}')
+                return False
+            # Enrich tweet content with sentiment and event
+            if is_event:
+                tweet_content = f'[#CryptoEvent 📅] {tweet_content}'
+            elif sentiment.lower() == 'positive':
+                tweet_content = f'[#Bullish 🚀] {tweet_content}'
+            elif sentiment.lower() == 'negative':
+                tweet_content = f'[#Bearish 🐻] {tweet_content}'
+
+            # Compose url if news url is provided
+            shorten_url_to_use = ''
+            if news_url:
+                shorten_news_url = shorten_url(news_url)
+                if len(shorten_news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+                    shorten_url_to_use = shorten_news_url
+
+            # Compose url if news url is missing or too long
+            if media_url and shorten_url_to_use == '':
+                shorten_media_url = shorten_url(media_url)
+                if len(shorten_media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+                    shorten_url_to_use = shorten_media_url
+
+            # Compose hashtags
+            hashtags_string = ''
+            while len(hashtags) > 0:
+                tag = hashtags.pop()
+                if not tag or len(tag) <= 2:
+                    continue
+                if len(tag) + len(hashtags_string) + len(tweet_content) + len(shorten_url_to_use) > TWEET_LENGTH_CHAR_LIMIT - 5:
+                    continue
+                if tweet_content.find(tag) != -1:
+                    continue
+                hashtags_string = f'{hashtags_string} {tag}'.strip()
+
+            # Compose tweet content
+            if hashtags_string:
+                tweet_content = f'{tweet_content}\n\n{hashtags_string}'
+            if shorten_url_to_use:
+                tweet_content = f'{tweet_content}\n{shorten_url_to_use}'
+
+            # Check if tweet is too similar to a recently posted tweet
+            most_similar_previous_post_id, most_similar_previous_post_similarity_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
+                content)
+            if most_similar_previous_post_similarity_score > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
+                warn(
+                    f'Tweet is too similar to a recently posted tweet, similarity: {most_similar_previous_post_similarity_score}. recent_posted_tweet_id: {most_similar_previous_post_id}')
+                return False
+            elif most_similar_previous_post_similarity_score > TWEET_SIMILARITY_FOR_REPLY:
+                self.api.update_status(
+                    tweet_content, in_reply_to_status_id=most_similar_previous_post_id)
+                info(
+                    f'Tweet posted with reply id: {most_similar_previous_post_id} - {tweet_content}')
+            else:
+                self.api.update_status(tweet_content)
+                info(f'Tweet posted: {tweet_content}')
+
+        except Exception as e:
+            error("Error posting tweet: " + str(e))
+            return False
+        return True
 
     def should_post(self, tweet_json_data, recent_posted_tweets_with_id, pending_tweets_to_post_with_reply_id):
         summary_text = tweet_json_data['summary']
@@ -342,7 +468,8 @@ class TwitterAPIManager:
 
 
 if __name__ == "__main__":
-    api_manager = TwitterAPIManager()
+    api_manager = TwitterAPIManager(
+        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto)
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
     #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
@@ -373,6 +500,6 @@ if __name__ == "__main__":
     # for (id, url) in all_twitter_user_id_url:
     #     products = api_manager.generate_product_recommendation_for_user(id)
     #     info(f"{products} for user {url}")
-    products = api_manager.generate_product_recommendation_for_user(
-        '1205226529455632385')
-    info(f"{products}")
+    # products = api_manager.generate_product_recommendation_for_user(
+    #     '1205226529455632385')
+    # info(f"{products}")

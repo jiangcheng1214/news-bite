@@ -72,14 +72,14 @@ def find_best_match_and_score(candidates: List, target: str, maapping_func=lambd
 
 
 if __name__ == '__main__':
-    api_manager = TwitterAPIManager()
-    products_with_recommendation_reason = api_manager.generate_product_recommendation_for_user(
-        '35762475')
-    products = [x.split(' - ')[1].strip()
-                for x in products_with_recommendation_reason]
-    temu_products = all_quality_products()
-    for product in products:
-        best_match_product, best_score = find_best_match_and_score(
-            temu_products, product, lambda x: x[0])
-        info(
-            f'Best match for {product} is {best_match_product} with score {best_score}')
+    # api_manager = TwitterAPIManager()
+    # products_with_recommendation_reason = api_manager.generate_product_recommendation_for_user(
+    #     '1194984822')
+    # products = [x.split(' - ')[1].strip()
+    #             for x in products_with_recommendation_reason]
+    # temu_products = all_quality_products()
+    # for product in products:
+    #     best_match_product, best_score = find_best_match_and_score(
+    #         temu_products, product, lambda x: x[0])
+    #     info(
+    #         f'Best match for {product} is {best_match_product} with score {best_score}')

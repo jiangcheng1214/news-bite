@@ -4,7 +4,7 @@ import os
 import re
 import time
 
-from twitter.TwitterAPIManager import TwitterAPIManager
+from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType
 
 porn_keywords = [
     'adult',  'xxx', 'breast', 'porn', 'nude', 'sex', 'nsfw', 'x-rated', 'fetish', 'onlyfans', 'onlyfanz', 'fuck', 'fxck', 'anal', 'fingered', 'pussy', 'dicks', 'dick', 'sugardad', 'sugardaddy', 'sugar daddy', '18+'
@@ -54,7 +54,7 @@ def group_influencers(source_dir_paths, output_csv_dir, tell_porn=False):
     influencers_csv_file = open(influencers_output_csv_path, 'w')
     influencers_csv_file.write(
         'id,username,location,verified,followers_count,tweet_count,created_at,user_url,description\n')
-    api_manager = TwitterAPIManager()
+    api_manager = TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech)
     counter = 0
     for source_dir_path in source_dir_paths:
         for file_name in sorted(os.listdir(source_dir_path)):

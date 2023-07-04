@@ -1,6 +1,7 @@
 from enum import Enum
 import datetime
 import re
+import pyshorteners
 
 
 class TwitterTopic(Enum):
@@ -12,8 +13,9 @@ class TwitterTopic(Enum):
 class TwitterTopicMatchScoreSeeds(Enum):
     TECHNOLOGY_FINANCE = ['technology news', 'financial news', 'stock market',
                           'fiscal policy', 'monetory policy', 'federal reserve',
-                          'artificial intelligence', 'crypto currency news', 'breaking news', 
+                          'artificial intelligence', 'crypto currency news', 'breaking news',
                           'celebrity scandal', 'celebrity affair', 'technology announcement']
+
 
 class OpenaiModelVersion(Enum):
     GPT3_5 = 0
@@ -37,14 +39,14 @@ def get_current_hour():
     return now.hour
 
 
-def get_today_date():
+def get_today_date(format="%Y%m%d"):
     now = datetime.datetime.now()
-    return now.strftime("%Y%m%d")
+    return now.strftime(format)
 
 
-def get_yesterday_date():
+def get_yesterday_date(format="%Y%m%d"):
     yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-    return yesterday.strftime("%Y%m%d")
+    return yesterday.strftime(format)
 
 
 def get_date(time):
@@ -71,4 +73,8 @@ def clean_summary(summary: str):
     cleaned_text = re.sub(r'^-\s*', '', cleaned_text)
     cleaned_text = re.sub(r'^\"|\"$', '', cleaned_text)
     return cleaned_text
-    
+
+
+def shorten_url(url):
+    url_shortener = pyshorteners.Shortener()
+    return url_shortener.tinyurl.short(url)

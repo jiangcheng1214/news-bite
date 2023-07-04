@@ -2,7 +2,7 @@ import datetime
 import os
 from utils.Utilities import TwitterTopic, get_yesterday_date, get_today_date
 from twitter.TweetSummarizer import TweetSummarizer
-from twitter.TwitterAPIManager import TwitterAPIManager
+from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType
 from utils.Logging import info, error
 import time
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
                         TwitterTopic.TECHNOLOGY_FINANCE.value, date, hour - news_summary_hour_interval, hour)
                     finance_tweet_summarizer.enrich_tweet_summary(
                         raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
-                    TwitterAPIManager().upload_summary_items(enriched_summary_file_path)
+                    TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech).upload_summary_items(enriched_summary_file_path)
             sec_until_next_start = (next_hour_start_time -
                                     datetime.datetime.now()).seconds
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
