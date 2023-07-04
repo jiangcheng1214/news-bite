@@ -54,7 +54,8 @@ def group_influencers(source_dir_paths, output_csv_dir, tell_porn=False):
     influencers_csv_file = open(influencers_output_csv_path, 'w')
     influencers_csv_file.write(
         'id,username,location,verified,followers_count,tweet_count,created_at,user_url,description\n')
-    api_manager = TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech)
+    api_manager = TwitterAPIManager(
+        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFintech)
     counter = 0
     for source_dir_path in source_dir_paths:
         for file_name in sorted(os.listdir(source_dir_path)):

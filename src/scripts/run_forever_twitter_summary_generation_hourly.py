@@ -69,7 +69,8 @@ if __name__ == "__main__":
                         TwitterTopic.TECHNOLOGY_FINANCE.value, date, hour - news_summary_hour_interval, hour)
                     finance_tweet_summarizer.enrich_tweet_summary(
                         raw_tweet_file_paths, summary_file_path, enriched_summary_file_path)
-                    TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech).upload_summary_items(enriched_summary_file_path)
+                    TwitterAPIManager(TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFintech).upload_summary_items(
+                        enriched_summary_file_path)
             sec_until_next_start = (next_hour_start_time -
                                     datetime.datetime.now()).seconds
             info(f"Seconds until the next hour starts: {sec_until_next_start}")

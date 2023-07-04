@@ -17,7 +17,7 @@ load_dotenv()
 
 class TwitterAPIManagerAccountType(Enum):
     TwitterAPIManagerAccountTypeCrypto = 0
-    TwitterAPIManagerAccountTypeFinTech = 1
+    TwitterAPIManagerAccountTypeFintech = 1
 
 
 class TwitterPostCandidate:
@@ -45,7 +45,7 @@ class TwitterAPIManager:
             access_token_secret = os.getenv(
                 "TWITTER_CRYPTO_ACCOUNT_ACCESS_SECRET")
 
-        elif accountType == TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFinTech:
+        elif accountType == TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFintech:
             consumer_key = os.getenv(
                 "TWITTER_FINTECH_ACCOUNT_CONSUMER_API_KEY")
             consumer_secret = os.getenv(
@@ -168,7 +168,7 @@ class TwitterAPIManager:
                 self.api.update_status(
                     tweet_content, in_reply_to_status_id=most_similar_previous_post_id)
                 info(
-                    f'Tweet posted with reply id: {most_similar_previous_post_id} - {tweet_content}')
+                    f'Tweet posted with reply id ({most_similar_previous_post_similarity_score}): {most_similar_previous_post_id} - {tweet_content}')
             else:
                 self.api.update_status(tweet_content)
                 info(f'Tweet posted: {tweet_content}')
@@ -469,7 +469,9 @@ class TwitterAPIManager:
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager(
-        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto)
+        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFintech)
+    api_manager.get_api().update_status(
+        status='test')
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
     #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
