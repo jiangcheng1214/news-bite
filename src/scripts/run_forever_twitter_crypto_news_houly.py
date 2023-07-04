@@ -7,6 +7,8 @@ import time
 from typing import List
 
 tweet_post_hour_interval = 1
+# delay 3 minutes to post so that we can be ranked higher in search results sorted by time
+run_time_start_delay_in_second = 180
 
 cryptonewsAPIManager = CryptonewsAPIManager()
 langChainAPIManager = LangChainAPIManager()
@@ -79,7 +81,7 @@ if __name__ == "__main__":
             info(f"Post candidate count: {len(post_candidate_list)}")
             twitterAPIManager.post_tweets(post_candidate_list, post_limit=5)
             sec_until_next_start = (next_hour_start_time -
-                                    datetime.datetime.now()).seconds
+                                    datetime.datetime.now()).seconds + run_time_start_delay_in_second
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
             time.sleep(sec_until_next_start+5)
         except Exception as e:
