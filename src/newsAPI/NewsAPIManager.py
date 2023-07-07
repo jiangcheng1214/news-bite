@@ -19,6 +19,9 @@ class NewsAPIType(Enum):
     NewsAPITypeCrypto = "crypto"
     NewsAPITypeFintech = "fintech"
 
+class GeneralNewsType(Enum):
+    Article = "Article"
+    Video = "Video"
 
 class GeneralNews:
     def __init__(self, initial_dict: dict):

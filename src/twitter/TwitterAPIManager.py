@@ -5,6 +5,7 @@ import tweepy
 import os
 from dotenv import load_dotenv
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
+from openAI.OpenaiClipFeatureGenerator import OpenaiClipFeatureGenerator
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
 from utils.Utilities import OpenaiModelVersion, get_clean_text, shorten_url
@@ -28,6 +29,7 @@ class TwitterPostCandidate:
         self.hashtags = initial_dict.get("hashtags")
         self.sentiment = initial_dict.get("sentiment")
         self.is_event = initial_dict.get("is_event")
+        self.is_video = initial_dict.get("is_video")
 
 
 class TwitterAPIManager:
@@ -66,22 +68,31 @@ class TwitterAPIManager:
         info("Twitter API created")
         return api
 
-    def get_recent_posted_tweets(self) -> List:
-        recent_posted_tweets = []
-        for tweet in tweepy.Cursor(self.api.user_timeline).items():
-            try:
-                second_since_created = int(
-                    time.time() - tweet.created_at.timestamp())
-                if second_since_created > TWEET_THREAD_COVERAGE_SEC:
+    def get_recent_posted_tweets(self, retry=False) -> List:
+        try:
+            recent_posted_tweets = []
+            for tweet in tweepy.Cursor(self.api.user_timeline).items():
+                try:
+                    second_since_created = int(
+                        time.time() - tweet.created_at.timestamp())
+                    if second_since_created > TWEET_THREAD_COVERAGE_SEC:
+                        continue
+                    recent_posted_tweets.append([tweet.text, tweet.id])
+                except Exception as e:
+                    error("Error getting posted tweet" + str(e))
                     continue
-                recent_posted_tweets.append([tweet.text, tweet.id])
-            except Exception as e:
-                error("Error getting posted tweet" + str(e))
-                continue
-        return recent_posted_tweets
+            return recent_posted_tweets
+        except Exception as e:
+            if retry:
+                error("Error getting posted tweets" + str(e))
+                return []
+            else:
+                time.sleep(10)
+                return self.get_recent_posted_tweets(retry=True)
 
-    def get_most_similar_posted_tweet_id_and_similarity_score(self, content):
-        recent_posted_tweets = self.get_recent_posted_tweets()
+    def get_most_similar_posted_tweet_id_and_similarity_score(self, content, recent_posted_tweets=None):
+        if not recent_posted_tweets:
+            recent_posted_tweets = self.get_recent_posted_tweets()
         most_similar_posted_tweet_id = None
         most_similar_posted_tweet_similarity_score = 0
         for recent_posted_tweet in recent_posted_tweets:
@@ -89,94 +100,97 @@ class TwitterAPIManager:
                 '\n', ' ')
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 content, recent_posted_tweet_content)
+            # similarity = OpenaiClipFeatureGenerator.get_instance().get_similarity_score(
+            #     content, recent_posted_tweet_content)
             if similarity > most_similar_posted_tweet_similarity_score:
                 most_similar_posted_tweet_similarity_score = similarity
                 most_similar_posted_tweet_id = recent_posted_tweet[1]
         return most_similar_posted_tweet_id, most_similar_posted_tweet_similarity_score
 
+    def compose_tweet(self, content: str, hashtags: List[str], news_url: str, media_url: str, is_video: bool):
+        tweet_content = content
+        # Make sure tweet content is not too long
+        if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
+            warn(f'Tweet content too long: {tweet_content}')
+            return False
+
+        # Compose url if news url is provided
+        shorten_url_to_use = ''
+        if news_url:
+            shorten_news_url = shorten_url(news_url)
+            if len(shorten_news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+                shorten_url_to_use = shorten_news_url
+            # if len(news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+            #     shorten_url_to_use = news_url
+
+        # Compose url if news url is missing or too long
+        if media_url and shorten_url_to_use == '':
+            shorten_media_url = shorten_url(media_url)
+            if len(shorten_media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+                shorten_url_to_use = shorten_media_url
+            # if len(media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
+            #     shorten_url_to_use = media_url
+
+        # Compose hashtags
+        hashtags_string = ''
+        while len(hashtags) > 0:
+            tag = hashtags.pop()
+            if not tag or len(tag) <= 2:
+                continue
+            if len(tag) + len(hashtags_string) + len(tweet_content) + len(shorten_url_to_use) > TWEET_LENGTH_CHAR_LIMIT - 5:
+                continue
+            if tweet_content.find(tag) != -1:
+                continue
+            hashtags_string = f'{hashtags_string} {tag}'.strip()
+
+        # Compose tweet content
+        if hashtags_string:
+            tweet_content = f'{tweet_content}\n\n{hashtags_string}'
+
+        if shorten_url_to_use:
+            tweet_content = f'{tweet_content}\n\n{shorten_url_to_use}'
+        # most_similar_previous_post_id, most_similar_previous_post_similarity_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
+        #     content)
+        return (tweet_content, is_video)
+
     def post_tweets(self, tweets: List[TwitterPostCandidate], post_limit: int = TWEET_DEFAULT_POST_LIMIT):
         if len(tweets) == 0:
             return
         post_count = 0
-        for tweet in tweets:
+        composed_tweets = []
+        recent_posted_tweets = self.get_recent_posted_tweets()
+        if len(recent_posted_tweets) == 0:
+            warn('No recent posted tweets found')
+        for t in tweets:
+            composed_tweet = self.compose_tweet(
+                t.news_content, t.hashtags, t.news_url, t.image_url, t.is_video)
+            similar_id, similar_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
+                t.news_content, recent_posted_tweets)
+            composed_tweets.append(
+                (composed_tweet[0], composed_tweet[1], similar_id, similar_score))
+
+        for (tweet_content, is_video, most_similar_id, most_similar_score) in composed_tweets:
             try:
-                posted = self.post_tweet(tweet.news_content, tweet.hashtags,
-                                         tweet.news_url, tweet.image_url, tweet.sentiment, tweet.is_event)
-                if posted:
-                    post_count += 1
+                if not is_video and most_similar_score > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
+                    warn(
+                        f'Tweet is too similar to a recently posted tweet, similarity: {most_similar_score}. recent_posted_tweet_id: {most_similar_id}')
+                    continue
+                elif most_similar_score > TWEET_SIMILARITY_FOR_REPLY:
+                    self.api.update_status(
+                        tweet_content, in_reply_to_status_id=most_similar_id)
+                    info(
+                        f'Tweet posted with reply id ({most_similar_score}): {most_similar_id} - {tweet_content}')
+                else:
+                    self.api.update_status(tweet_content)
+                    info(f'Tweet posted: {tweet_content}')
+                post_count += 1
             except Exception as e:
                 error("Error posting tweet" + str(e))
                 continue
             if post_count >= post_limit:
                 break
         info(f'Posted {post_count} tweets')
-
-    def post_tweet(self, content: str, hashtags: List[str], news_url: str, media_url: str, sentiment: str = None, is_event: bool = False):
-        try:
-            tweet_content = content
-            # Make sure tweet content is not too long
-            if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
-                warn(f'Tweet content too long: {tweet_content}')
-                return False
-            # Enrich tweet content with sentiment and event
-            if is_event:
-                tweet_content = f'[#CryptoEvent 📅] {tweet_content}'
-            elif sentiment.lower() == 'positive':
-                tweet_content = f'[#Bullish 🚀] {tweet_content}'
-            elif sentiment.lower() == 'negative':
-                tweet_content = f'[#Bearish 🐻] {tweet_content}'
-
-            # Compose url if news url is provided
-            shorten_url_to_use = ''
-            if news_url:
-                shorten_news_url = shorten_url(news_url)
-                if len(shorten_news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-                    shorten_url_to_use = shorten_news_url
-
-            # Compose url if news url is missing or too long
-            if media_url and shorten_url_to_use == '':
-                shorten_media_url = shorten_url(media_url)
-                if len(shorten_media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-                    shorten_url_to_use = shorten_media_url
-
-            # Compose hashtags
-            hashtags_string = ''
-            while len(hashtags) > 0:
-                tag = hashtags.pop()
-                if not tag or len(tag) <= 2:
-                    continue
-                if len(tag) + len(hashtags_string) + len(tweet_content) + len(shorten_url_to_use) > TWEET_LENGTH_CHAR_LIMIT - 5:
-                    continue
-                if tweet_content.find(tag) != -1:
-                    continue
-                hashtags_string = f'{hashtags_string} {tag}'.strip()
-
-            # Compose tweet content
-            if hashtags_string:
-                tweet_content = f'{tweet_content}\n\n{hashtags_string}'
-            if shorten_url_to_use:
-                tweet_content = f'{tweet_content}\n{shorten_url_to_use}'
-
-            # Check if tweet is too similar to a recently posted tweet
-            most_similar_previous_post_id, most_similar_previous_post_similarity_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
-                content)
-            if most_similar_previous_post_similarity_score > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
-                warn(
-                    f'Tweet is too similar to a recently posted tweet, similarity: {most_similar_previous_post_similarity_score}. recent_posted_tweet_id: {most_similar_previous_post_id}')
-                return False
-            elif most_similar_previous_post_similarity_score > TWEET_SIMILARITY_FOR_REPLY:
-                self.api.update_status(
-                    tweet_content, in_reply_to_status_id=most_similar_previous_post_id)
-                info(
-                    f'Tweet posted with reply id ({most_similar_previous_post_similarity_score}): {most_similar_previous_post_id} - {tweet_content}')
-            else:
-                self.api.update_status(tweet_content)
-                info(f'Tweet posted: {tweet_content}')
-
-        except Exception as e:
-            error("Error posting tweet: " + str(e))
-            return False
-        return True
+        return post_count
 
     def should_post(self, tweet_json_data, recent_posted_tweets_with_id, pending_tweets_to_post_with_reply_id):
         summary_text = tweet_json_data['summary']
@@ -191,6 +205,8 @@ class TwitterAPIManager:
         for recent_posted_tweet in recent_posted_tweets:
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 summary_text, recent_posted_tweet)
+            # similarity = OpenaiClipFeatureGenerator().get_instance().get_similarity_score(
+            #     summary_text, recent_posted_tweet)
             if similarity > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
                 warn(
                     f'Tweet is too similar to a recently posted tweet, similarity: {similarity}. recent_posted_tweet: {recent_posted_tweet}, summary_text: {summary_text}')
@@ -200,6 +216,8 @@ class TwitterAPIManager:
         for pending_tweet in pending_tweets_to_post:
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 summary_text, pending_tweet)
+            # similarity = OpenaiClipFeatureGenerator().get_instance().get_similarity_score(
+            #     summary_text, pending_tweet)
             if similarity > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
                 warn(
                     f'Tweet is too similar to a pending tweet, similarity: {similarity}. pending_tweet: {pending_tweet}, summary_text: {summary_text}')
@@ -215,6 +233,8 @@ class TwitterAPIManager:
             recent_posted_tweet_id = recent_posted_tweet_with_id[1]
             similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
                 text, recent_posted_tweet)
+            # similarity = OpenaiClipFeatureGenerator().get_instance().get_similarity_score(
+            #     text, recent_posted_tweet)
             if similarity > TWEET_SIMILARITY_FOR_REPLY:
                 result.append(
                     [similarity, recent_posted_tweet, recent_posted_tweet_id])
@@ -469,9 +489,11 @@ class TwitterAPIManager:
 
 if __name__ == "__main__":
     api_manager = TwitterAPIManager(
-        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeFintech)
-    api_manager.get_api().update_status(
-        status='test')
+        TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto)
+    # api_manager.get_api().update_status(
+    #     status='test')
+    recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
+    print(recent_posted_tweets_with_id)
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
     #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')

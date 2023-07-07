@@ -41,7 +41,7 @@ class LangChainAPIManager:
         # print(format_instructions)
 
         template = """
-        Generate tweet content (less than 260 chars) and hashtags based on following information:\n
+        Based on a given news, generate tweet content (less than 260 chars) and refine it to be easy to understand. Also generate relavant hashtags.\n
 
         {format_instructions}
 
