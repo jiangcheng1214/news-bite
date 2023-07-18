@@ -2,6 +2,9 @@ from enum import Enum
 import datetime
 import re
 import pyshorteners
+from moviepy.editor import *
+
+from utils.Logging import info, warn, error
 
 
 class TwitterTopic(Enum):
@@ -78,3 +81,20 @@ def clean_summary(summary: str):
 def shorten_url(url):
     url_shortener = pyshorteners.Shortener()
     return url_shortener.tinyurl.short(url)
+
+
+def trim_video(video_file_path, start_time_sec, end_time_sec):
+    if start_time_sec >= end_time_sec:
+        warn("trim_video: start_time_sec is less than end_time_sec")
+        return video_file_path
+    clip = VideoFileClip(video_file_path)
+    if clip.duration < end_time_sec:
+        warn("trim_video: end_time_sec is greater than video duration")
+        return video_file_path
+    clip = clip.subclip(start_time_sec, end_time_sec)
+    prefix = 'trimmed_'
+    file_dir = os.path.dirname(video_file_path)
+    file_name = os.path.basename(video_file_path)
+    video_file_path = os.path.join(file_dir, prefix + file_name)
+    clip.write_videofile(video_file_path, audio_codec='aac')
+    return video_file_path

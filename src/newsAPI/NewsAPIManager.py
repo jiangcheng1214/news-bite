@@ -1,7 +1,6 @@
 from dateutil import parser
 import requests
 from utils.Logging import info, warn, error
-from utils.Logging import info, warn
 from utils.Utilities import get_today_date, get_yesterday_date
 from dotenv import load_dotenv
 import os
@@ -19,9 +18,11 @@ class NewsAPIType(Enum):
     NewsAPITypeCrypto = "crypto"
     NewsAPITypeFintech = "fintech"
 
+
 class GeneralNewsType(Enum):
     Article = "Article"
     Video = "Video"
+
 
 class GeneralNews:
     def __init__(self, initial_dict: dict):
@@ -72,7 +73,7 @@ class NewsAPIManager():
             self.base_url = "https://stocknewsapi.com/api/v1"
             self.api_key = os.getenv("STOCKNEWS_API_KEY")
 
-    def get_general_news(self):
+    def get_general_news(self, video_only: bool = False) -> List[GeneralNews]:
         url = f"{self.base_url}/category"
         params = {
             "section": "general",
@@ -92,6 +93,8 @@ class NewsAPIManager():
         news_list = []
         for news_json in news_json_list:
             try:
+                if video_only and news_json['type'] != GeneralNewsType.Video.value:
+                    continue
                 news_list.append(GeneralNews(news_json))
             except Exception as e:
                 error(f"Error occurred: {e}. {news_json}")

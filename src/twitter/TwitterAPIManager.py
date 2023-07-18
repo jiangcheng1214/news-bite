@@ -4,15 +4,20 @@ import pyshorteners
 import tweepy
 import os
 from dotenv import load_dotenv
+from langChain.LangChainAPIManager import LangChainAPIManager
+from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, NewsAPIType
 from openAI.OpenaiGptApiManager import OpenaiGptApiManager
 from openAI.OpenaiClipFeatureGenerator import OpenaiClipFeatureGenerator
 from utils.TextEmbeddingCache import TextEmbeddingCache
 from utils.Logging import error, info, warn
 from utils.Utilities import OpenaiModelVersion, get_clean_text, shorten_url
-from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY, TWITTER_BEARER_TOKEN_EVAR_KEY
+from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWEET_VIDEO_DURATION_LIMIT_IN_SECOND_DEFAULT, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY, TWITTER_BEARER_TOKEN_EVAR_KEY
+from utils.Utilities import trim_video
 import json
 from enum import Enum
 from typing import List
+
+from youtube.YoutubeDownloader import YoutubeDownloader
 load_dotenv()
 
 
@@ -37,6 +42,7 @@ class TwitterAPIManager:
         self.api = self.create_api(accountType)
         self.openaiApiManager = OpenaiGptApiManager(
             OpenaiModelVersion.GPT3_5.value)
+        self.youtubeDownloader = YoutubeDownloader()
 
     def create_api(self, accountType: TwitterAPIManagerAccountType):
         if accountType == TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto:
@@ -79,12 +85,12 @@ class TwitterAPIManager:
                         continue
                     recent_posted_tweets.append([tweet.text, tweet.id])
                 except Exception as e:
-                    error("Error getting posted tweet" + str(e))
+                    error("Error getting posted tweet: " + str(e))
                     continue
             return recent_posted_tweets
         except Exception as e:
             if retry:
-                error("Error getting posted tweets" + str(e))
+                error("Error getting posted tweets: " + str(e))
                 return []
             else:
                 time.sleep(10)
@@ -107,38 +113,29 @@ class TwitterAPIManager:
                 most_similar_posted_tweet_id = recent_posted_tweet[1]
         return most_similar_posted_tweet_id, most_similar_posted_tweet_similarity_score
 
-    def compose_tweet(self, content: str, hashtags: List[str], news_url: str, media_url: str, is_video: bool):
+    def compose_tweet(self, content: str, hashtags: str or List[str]):
         tweet_content = content
-        # Make sure tweet content is not too long
-        if len(tweet_content) > TWEET_LENGTH_CHAR_LIMIT:
-            warn(f'Tweet content too long: {tweet_content}')
-            return False
-
-        # Compose url if news url is provided
-        shorten_url_to_use = ''
-        if news_url:
-            shorten_news_url = shorten_url(news_url)
-            if len(shorten_news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-                shorten_url_to_use = shorten_news_url
-            # if len(news_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-            #     shorten_url_to_use = news_url
-
-        # Compose url if news url is missing or too long
-        if media_url and shorten_url_to_use == '':
-            shorten_media_url = shorten_url(media_url)
-            if len(shorten_media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-                shorten_url_to_use = shorten_media_url
-            # if len(media_url) + len(tweet_content) < TWEET_LENGTH_CHAR_LIMIT - 2:
-            #     shorten_url_to_use = media_url
+        hashtag_list = []
+        if type(hashtags) == list:
+            hashtag_list = hashtags
+        elif type(hashtags) == str:
+            hashtag_list = hashtags.split(',')
+        clean_hashtags = []
+        for h in hashtag_list:
+            tag = h.strip().replace('-', '').replace('.', '')
+            if not tag.startswith('#'):
+                clean_hashtags.append(f"#{tag}")
+            else:
+                clean_hashtags.append(tag)
 
         # Compose hashtags
         hashtags_string = ''
-        while len(hashtags) > 0:
-            tag = hashtags.pop()
+        while len(clean_hashtags) > 0:
+            tag = clean_hashtags.pop()
             if not tag or len(tag) <= 2:
                 continue
-            if len(tag) + len(hashtags_string) + len(tweet_content) + len(shorten_url_to_use) > TWEET_LENGTH_CHAR_LIMIT - 5:
-                continue
+            # if len(tag) + len(hashtags_string) + len(tweet_content) + len(shorten_url_to_use) > TWEET_LENGTH_CHAR_LIMIT - 5:
+            #     continue
             if tweet_content.find(tag) != -1:
                 continue
             hashtags_string = f'{hashtags_string} {tag}'.strip()
@@ -147,11 +144,24 @@ class TwitterAPIManager:
         if hashtags_string:
             tweet_content = f'{tweet_content}\n\n{hashtags_string}'
 
-        if shorten_url_to_use:
-            tweet_content = f'{tweet_content}\n\n{shorten_url_to_use}'
-        # most_similar_previous_post_id, most_similar_previous_post_similarity_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
-        #     content)
-        return (tweet_content, is_video)
+        # if shorten_url_to_use:
+        #     tweet_content = f'{tweet_content}\n\n{shorten_url_to_use}'
+        return tweet_content
+
+    def upload_video(self, video_path: str, retry=0):
+        try:
+            info(f"Uploading video {video_path}")
+            media = self.api.media_upload(
+                video_path, media_category='tweet_video')
+            info(f"Video uploaded {video_path}")
+            return media.media_id_string
+        except Exception as e:
+            if retry > 2:
+                error("Error uploading video" + str(e))
+                return None
+            else:
+                time.sleep(5)
+                return self.upload_video(video_path, retry=retry+1)
 
     def post_tweets(self, tweets: List[TwitterPostCandidate], post_limit: int = TWEET_DEFAULT_POST_LIMIT):
         if len(tweets) == 0:
@@ -162,30 +172,70 @@ class TwitterAPIManager:
         if len(recent_posted_tweets) == 0:
             warn('No recent posted tweets found')
         for t in tweets:
-            composed_tweet = self.compose_tweet(
-                t.news_content, t.hashtags, t.news_url, t.image_url, t.is_video)
+            composed_tweet = self.compose_tweet(t.news_content, t.hashtags)
             similar_id, similar_score = self.get_most_similar_posted_tweet_id_and_similarity_score(
                 t.news_content, recent_posted_tweets)
             composed_tweets.append(
-                (composed_tweet[0], composed_tweet[1], similar_id, similar_score))
+                (composed_tweet, t.is_video, t.news_url, similar_id, similar_score))
 
-        for (tweet_content, is_video, most_similar_id, most_similar_score) in composed_tweets:
+        for (tweet_content, is_video, news_url, most_similar_id, most_similar_score) in composed_tweets:
             try:
                 if not is_video and most_similar_score > TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
                     warn(
                         f'Tweet is too similar to a recently posted tweet, similarity: {most_similar_score}. recent_posted_tweet_id: {most_similar_id}')
                     continue
+                elif is_video:
+                    # only support Youtube video for now
+                    if news_url.find('youtube.com') == -1:
+                        warn(
+                            f'Video is not from Youtube, not posting: {news_url}, {tweet_content}')
+                        continue
+                    try:
+                        video_id = news_url.split('v=')[1]
+                        video_path = self.youtubeDownloader.download(
+                            news_url, f'{video_id}.mp4')
+                        trimmed_video_path = trim_video(
+                            video_path, 1, TWEET_VIDEO_DURATION_LIMIT_IN_SECOND_DEFAULT)
+                        info(
+                            f'Trimmed video: {video_path} to {trimmed_video_path}')
+                        media_id = self.upload_video(trimmed_video_path)
+                        info(f'Uploaded video: {media_id}')
+                        if media_id:
+                            self.api.update_status(
+                                status=tweet_content, media_ids=[media_id])
+                            info(f'Tweet posted with video: {tweet_content}')
+                            post_count += 1
+                            # remove video file
+                            try:
+                                if os.path.exists(trimmed_video_path):
+                                    os.remove(trimmed_video_path)
+                                    info(
+                                        f'Removed video file: {trimmed_video_path}')
+                                if os.path.exists(video_path):
+                                    os.remove(video_path)
+                                    info(f'Removed video file: {video_path}')
+                            except Exception as e:
+                                error(
+                                    f'Error removing video files: {trimmed_video_path}, {video_path}')
+                        else:
+                            error(f'Video upload failed: {news_url}')
+                    except Exception as e:
+                        error('Error posting video tweet: ' + str(e))
+                        continue
                 elif most_similar_score > TWEET_SIMILARITY_FOR_REPLY:
+                    tweet_content = f'{tweet_content}\n\n{news_url}'
                     self.api.update_status(
                         tweet_content, in_reply_to_status_id=most_similar_id)
                     info(
                         f'Tweet posted with reply id ({most_similar_score}): {most_similar_id} - {tweet_content}')
+                    post_count += 1
                 else:
+                    tweet_content = f'{tweet_content}\n\n{news_url}'
                     self.api.update_status(tweet_content)
                     info(f'Tweet posted: {tweet_content}')
-                post_count += 1
+                    post_count += 1
             except Exception as e:
-                error("Error posting tweet" + str(e))
+                error("Error posting tweet: " + str(e))
                 continue
             if post_count >= post_limit:
                 break
@@ -490,10 +540,41 @@ class TwitterAPIManager:
 if __name__ == "__main__":
     api_manager = TwitterAPIManager(
         TwitterAPIManagerAccountType.TwitterAPIManagerAccountTypeCrypto)
+    cryptoNewsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeCrypto)
+    langChainAPIManager = LangChainAPIManager()
+    video_news_list = cryptoNewsAPIManager.get_general_news(True)
+    video_news = video_news_list[:5]
+    candidates = []
+    for n in video_news:
+        tweet_dict = langChainAPIManager.generate_tweet_dict(
+            title=n.news_title, abstract=n.news_text, topics=n.topics, source=n.source_name)
+        content = tweet_dict['tweet_content']
+        candidate = TwitterPostCandidate({
+            'news_content': content,
+            "news_url": n.news_url,
+            "media_url": n.image_url,
+            "hashtags": tweet_dict['hashtags'],
+            "sentiment": n.sentiment,
+            "is_event": n.event_id is not None,
+            "is_video": n.type == GeneralNewsType.Video.value,
+        })
+        candidates.append(candidate)
+    api_manager.post_tweets(candidates)
+    # downloader = YoutubeDownloader()
+    # downloader.download(
+    #     "https://www.youtube.com/watch?v=MkBZIfSyeD0", "1min.mp4", small_size=True)
+    # upload_result = api_manager.get_api().media_upload(
+    #     '/Users/chengjiang/Dev/NewsBite/data/videos/trimmed_1min.mp4', media_category='tweet_video')
+    # print(upload_result)
     # api_manager.get_api().update_status(
-    #     status='test')
-    recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
-    print(recent_posted_tweets_with_id)
+    #     status="test video", media_ids=['1678538254247927809'])
+    # trimmed_video_path = trim_video(
+    #     '/Users/chengjiang/Dev/NewsBite/data/videos/1min.mp4', 0, 45)
+
+    # recent_posted_tweets_with_id = api_manager.get_recent_posted_tweets()
+    # print(recent_posted_tweets_with_id)
+    # api_manager.get_api().update_status_with_media(
+    #     status='test', filename='/Users/chengjiang/Dev/NewsBite/data/videos/test1.mp4')
     # info(api_manager.get_api().user_timeline(user_id='Forbes'))
     # api_manager.upload_summary_items(
     #     '/Users/chengjiang/Dev/NewsBite/data/tweet_summaries/technology_finance/20230601/summary_18_enriched')
