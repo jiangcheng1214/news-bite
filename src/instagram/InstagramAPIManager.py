@@ -20,26 +20,26 @@ class InstagramAPIManager:
     def __init__(self, accountType: InstagramAPIManagerAccountType):
         self.accountType = accountType
         self.posterGenerator = PosterGenerator()
+        self.client = Client()
+        self.client.delay_range = [1, 3]
         if accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto:
-            INSTAGRAM_USERNAME = os.environ.get('THREADS_CRYPTO_USER_NAME')
-            INSTAGRAM_PASSWORD = os.environ.get('THREADS_CRYPTO_PASSWORD')
-            self.client = Client()
+            self.username = os.environ.get('THREADS_CRYPTO_USER_NAME')
+            self.password = os.environ.get('THREADS_CRYPTO_PASSWORD')
             self.session_path = os.path.join(os.path.dirname(
                 __file__), '..', '..', 'cache', f'instagram_session_crypto.json')
-            self.login_user(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
             self.hashtag_appending = '#crypto #cryptocurrency #btc #bitcoin #passiveincome #eth #marketsentiment #cryptonews'
         elif accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech:
-            INSTAGRAM_USERNAME = os.environ.get('THREADS_FINTECH_USER_NAME')
-            INSTAGRAM_PASSWORD = os.environ.get('THREADS_FINTECH_PASSWORD')
-            self.client = Client()
+            self.username = os.environ.get('THREADS_FINTECH_USER_NAME')
+            self.password = os.environ.get('THREADS_FINTECH_PASSWORD')
             self.session_path = os.path.join(os.path.dirname(
                 __file__), '..', '..', 'cache', f'instagram_session_fintech.json')
-            self.login_user(INSTAGRAM_USERNAME, INSTAGRAM_PASSWORD)
             self.hashtag_appending = '#financialnews #technews #quant #marketsentiment #passiveincome #stockmarket #marketindicator #fintech'
         else:
             raise Exception("Invalid account type")
+        self.login_user()
 
-    def login_user(self, username, password):
+    def login_user(self):
+        username, password = self.username, self.password
         session = None
         if os.path.exists(self.session_path):
             session = self.client.load_settings(self.session_path)
