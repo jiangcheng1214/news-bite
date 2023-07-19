@@ -8,3 +8,4 @@ src/myenv
 *.zip
 .DS_Store
 *.pem
+cache/

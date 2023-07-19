@@ -55,7 +55,6 @@ class GeneralNews:
             "source_name": self.source_name,
             "type": self.type,
             "tickers": self.tickers,
-            "sentiment": self.sentiment,
             "date": self.date,
             "rank_score": self.rank_score,
             "event_id": self.event_id,

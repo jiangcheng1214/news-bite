@@ -1,8 +1,9 @@
 import datetime
+from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManagerAccountType
 from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
 from threadsMeta.ThreadsAPIManager import ThreadsAPIManager, ThreadsAPIManagerAccountType
-from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType, TwitterPostCandidate
+from twitter.TwitterAPIManager import TwitterPostCandidate
 from utils.Logging import info, error
 import time
 from typing import List
@@ -15,6 +16,8 @@ fintechNewsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeFintech)
 langChainAPIManager = LangChainAPIManager()
 threadsAPIManager = ThreadsAPIManager(
     ThreadsAPIManagerAccountType.ThreadsAPIManagerAccountTypeFintech)
+instagramAPIManager = InstagramAPIManager(
+    InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech)
 
 
 def get_recent_general_news(no_video=False) -> List[GeneralNews]:
@@ -72,7 +75,7 @@ def run():
         candidate = TwitterPostCandidate({
             'news_content': content,
             "news_url": n.news_url,
-            "media_url": n.image_url,
+            "image_url": n.image_url,
             "hashtags": candidate_dict['hashtags'],
             "sentiment": sentiment,
             "is_event": is_event,
@@ -86,8 +89,11 @@ def run():
         f"[Stock] Ticker news candidate Ticker News({len(ticker_news_post_candidate_list)}) General News({len(general_news_post_candidate_list)})")
     threadsAPIManager.post_threads(
         general_news_post_candidate_list, post_limit=2)
+    instagramAPIManager.post_image(general_news_post_candidate_list, post_limit=1)
     threadsAPIManager.post_threads(
         ticker_news_post_candidate_list, post_limit=4)
+    instagramAPIManager.post_image(
+        ticker_news_post_candidate_list, post_limit=1)
 
 
 if __name__ == "__main__":

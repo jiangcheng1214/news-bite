@@ -1,8 +1,11 @@
 import datetime
+import os
+from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManagerAccountType
 from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
+from posterGeneration.PosterGenerator import PosterGenerator
 from threadsMeta.ThreadsAPIManager import ThreadsAPIManager, ThreadsAPIManagerAccountType
-from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType, TwitterPostCandidate
+from twitter.TwitterAPIManager import TwitterPostCandidate
 from utils.Logging import info, error
 import time
 from typing import List
@@ -15,6 +18,9 @@ cryptoNewsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeCrypto)
 langChainAPIManager = LangChainAPIManager()
 threadAPIManager = ThreadsAPIManager(
     ThreadsAPIManagerAccountType.ThreadsAPIManagerAccountTypeCrypto)
+posterGenerator = PosterGenerator()
+instagramAPIManager = InstagramAPIManager(
+    InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto)
 
 
 def get_recent_general_news(no_video=False) -> List[GeneralNews]:
@@ -49,7 +55,7 @@ def run():
         candidate = TwitterPostCandidate({
             'news_content': content,
             "news_url": n.news_url,
-            "media_url": n.image_url,
+            "image_url": n.image_url,
             "hashtags": candidate_dict['hashtags'],
             "sentiment": sentiment,
             "is_event": is_event,
@@ -59,6 +65,7 @@ def run():
     info(f"Post candidate count: {len(post_candidate_list)}")
     threadAPIManager.post_threads(
         post_candidate_list, post_limit=5)
+    instagramAPIManager.post_image(post_candidate_list, post_limit=2)
 
 
 if __name__ == "__main__":

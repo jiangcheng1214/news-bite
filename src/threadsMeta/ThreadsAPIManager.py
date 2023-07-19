@@ -120,7 +120,6 @@ class ThreadsAPIManager:
     def post_threads(self, candidates: List[TwitterPostCandidate], post_limit: int = THREADS_DEFAULT_POST_LIMIT):
         if len(candidates) == 0:
             return
-        post_count = 0
         composed_threads = []
         recent_posted_threads = self.get_recent_posted_threads()
         if len(recent_posted_threads) == 0:
@@ -130,32 +129,35 @@ class ThreadsAPIManager:
             similar_id, similar_score = self.get_most_similar_posted_thread_id_and_similarity_score(
                 c.news_content, recent_posted_threads)
             composed_threads.append(
-                (composed_thread, c.is_video, c.news_url, similar_id, similar_score))
-
-        for (thread_content, is_video, news_url, most_similar_id, most_similar_score) in composed_threads:
+                (composed_thread, c.is_video, c.news_url, c.image_url, similar_id, similar_score, c.sentiment))
+        posted_content = []
+        for (thread_content, is_video, news_url, image_url, most_similar_id, most_similar_score, sentiment) in composed_threads:
             try:
                 if not is_video and most_similar_score > THREADS_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD:
                     warn(
                         f'Thread is too similar to a recently posted thread, similarity: {most_similar_score}. recent_post_id: {most_similar_id}')
                     continue
                 elif most_similar_score > THREADS_SIMILARITY_FOR_REPLY:
+                    # BUG: reply is not working
                     self.private_api.create_thread(
                         caption=thread_content, url=news_url, reply_to=most_similar_id)
                     info(
                         f'Thread posted with reply id ({most_similar_score}): {most_similar_id} - {thread_content}')
-                    post_count += 1
+                    posted_content.append(
+                        (thread_content, image_url, sentiment))
                 else:
                     self.private_api.create_thread(
                         caption=thread_content, url=news_url)
                     info(f'Thread posted: {thread_content}')
-                    post_count += 1
+                    posted_content.append(
+                        (thread_content, image_url, sentiment))
             except Exception as e:
                 error("Error posting Thread: " + str(e))
                 continue
-            if post_count >= post_limit:
+            if len(posted_content) >= post_limit:
                 break
-        info(f'Posted {post_count} Threads')
-        return post_count
+        info(f'Posted {len(posted_content)} Threads')
+        return posted_content
 
 
 if __name__ == '__main__':
