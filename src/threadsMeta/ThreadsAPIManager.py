@@ -50,8 +50,6 @@ class ThreadsAPIManager:
         for t in recent_posted_threads_items[:200]:  # check up to 200 threads
             try:
                 thread_items = t['thread_items']
-                if len(thread_items) > 1:
-                    warn("Thread has more than 1 item. Only read first item")
                 if len(thread_items) == 0:
                     warn("Thread has no item")
                     continue
