@@ -100,7 +100,7 @@ def run():
             error("Instagram login required during posting image")
             instagramAPIManager.login_user()
     try:
-        instagramAPIManager.like_and_comment_media('investment')
+        instagramAPIManager.comment_media_from_searched_users('investment')
     except Exception as e:
         if 'login_required' in str(e):
             error("Instagram login required during liking and commenting")

@@ -70,7 +70,9 @@ def run():
             error("Instagram login required during posting image")
             instagramAPIManager.login_user()
     try:
-        instagramAPIManager.like_and_comment_media('bitcoin')
+        comment_text_with_news_content = post_candidate_list[0].news_content
+        instagramAPIManager.comment_media_from_searched_users(
+            'crypto currency', comment_text_with_news_content)
     except Exception as e:
         if 'login_required' in str(e):
             error("Instagram login required during liking and commenting")

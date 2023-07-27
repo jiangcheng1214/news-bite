@@ -1,10 +1,12 @@
+import json
 import random
 import time
+from utils.RedisClient import RedisClient
 from utils.Logging import error, info, warn
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, UnknownError
 from enum import Enum
-from typing import List
+from typing import Dict, List
 import os
 from dotenv import load_dotenv
 from posterGeneration.PosterGenerator import PosterGenerator
@@ -15,12 +17,18 @@ load_dotenv()
 class InstagramAPIManagerAccountType(Enum):
     InstagramAPIManagerAccountTypeCrypto = 0
     InstagramAPIManagerAccountTypeFintech = 1
+    InstagramAPIManagerAccountTypeOther = 2
+
+
+PAST_DM_USER_IDS_REDIS_KEY_CRYPTO = 'past_dm_user_ids_crypto'
+TODO_DM_USER_IDS_REDIS_KEY_CRYPTO = 'todo_dm_user_ids_crypto'
 
 
 class InstagramAPIManager:
-    def __init__(self, accountType: InstagramAPIManagerAccountType):
+    def __init__(self, accountType: InstagramAPIManagerAccountType, username=None, password=None, force_login=False):
         self.accountType = accountType
         self.posterGenerator = PosterGenerator()
+        self.redis_client = RedisClient().connect()
         self.client = Client()
         self.client.delay_range = [0.5, 1.5]
         if accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto:
@@ -29,23 +37,28 @@ class InstagramAPIManager:
             self.session_path = os.path.join(os.path.dirname(
                 __file__), '..', '..', 'cache', f'instagram_session_crypto.json')
             self.hashtag_appending = '#crypto #cryptocurrency #btc #bitcoin #passiveincome #eth #marketsentiment #cryptonews'
-            self.comment_text = '🙌 Follow for latest crypto updates, sentimental news and more. 🙌'
+            self.comment_text_suffix = '🙌 Latest crypto updates and sentimental news. #MissNoMore 🙌'
         elif accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech:
             self.username = os.environ.get('THREADS_FINTECH_USER_NAME')
             self.password = os.environ.get('THREADS_FINTECH_PASSWORD')
             self.session_path = os.path.join(os.path.dirname(
                 __file__), '..', '..', 'cache', f'instagram_session_fintech.json')
             self.hashtag_appending = '#financialnews #technews #quant #marketsentiment #passiveincome #stockmarket #marketindicator #fintech'
-            self.comment_text = '🙌 Follow for latest financial / tech updates, sentimental news and more. 🙌'
+            self.comment_text_suffix = '🙌 Latest financial / tech updates and sentimental news. #MissNoMore 🙌'
         else:
-            raise Exception("Invalid account type")
-        self.login_user()
+            assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther
+            self.username = username
+            self.password = password
+            self.session_path = os.path.join(os.path.dirname(
+                __file__), '..', '..', 'cache', f'instagram_session_{self.username}.json')
+        self.login_user(force_login=force_login)
 
-    def login_user(self):
+    def login_user(self, force_login=False):
         username, password = self.username, self.password
         session = None
-        if os.path.exists(self.session_path):
-            session = self.client.load_settings(self.session_path)
+        if not force_login:
+            if os.path.exists(self.session_path):
+                session = self.client.load_settings(self.session_path)
         login_via_session = False
         login_via_pw = False
         if session:
@@ -57,13 +70,10 @@ class InstagramAPIManager:
                     self.client.get_timeline_feed()
                 except LoginRequired:
                     warn("Session is invalid, need to login via username and password")
-
                     old_session = self.client.get_settings()
-
                     # use the same device uuids across logins
                     self.client.set_settings({})
                     self.client.set_uuids(old_session["uuids"])
-
                     self.client.login(username, password)
                 login_via_session = True
             except Exception as e:
@@ -164,107 +174,171 @@ class InstagramAPIManager:
                 most_similar_post = caption_text
         return most_similar_post, most_similar_post_similarity_score
 
-    def like_and_comment_media(self, seed_search_query, like_limit=25):
+    def comment_media_from_searched_users(self, seed_search_query, comment_text, like_limit=20):
         matched_users = self.client.search_users(
             seed_search_query)  # normally 20 will be returned
         info(
             f"Matched users: {len(matched_users)} for query: {seed_search_query}")
-        total_like_count = 0
+        total_users_to_reach = 10
+        total_posts_to_comment_per_user = 2
+        total_users_reached = 0
+        total_posts_commented = 0
         for user in matched_users:
-            recent_posts = self.client.user_medias(user.pk, amount=20)
+            recent_posts = self.client.user_medias(
+                user.pk, amount=total_posts_to_comment_per_user)
             info(
                 f"  Recent posts: {len(recent_posts)} for user: {user.username}({user.pk})")
+            total_posts_commented_for_current_user = 0
             for post in recent_posts:
-                if post.has_liked:
-                    # use like to flag if we have commented the post
-                    continue
                 try:
                     self.client.media_like(post.pk)
+                    info(
+                        f'Liked post: {post.caption_text} from user: {user.username}({user.pk})')
                     time.sleep(random.randint(10, 12))
                     post_caption_text = post.caption_text.replace(
                         '\n', ' ').strip()
-                    info(
-                        f'Liked post: {post_caption_text} from user: {user.username}({user.pk})')
-                    self.client.media_comment(post.pk, self.comment_text)
+                    conmment_content = f"🔥 Breaking News Just In 🔥 - {comment_text}\n{self.comment_text_suffix}"
+                    self.client.media_comment(post.pk, conmment_content)
                     time.sleep(random.randint(10, 12))
+                    total_posts_commented_for_current_user += 1
+                    total_posts_commented += 1
                     info(
-                        f'Commented post: {post_caption_text} from user: {user.username}({user.pk})')
+                        f'Commented post: {post_caption_text} from user: {user.username}({user.pk}) current user total posts commented: {total_posts_commented_for_current_user}, total posts commented: {total_posts_commented}')
                 except Exception as e:
-                    error(f"Exception in liking and commenting post: {e}")
+                    error(f"Exception during commenting post: {e}")
                     if 'login_required' in str(e):
                         error("Instagram login required during liking and commenting")
                         self.login_user()
-                total_like_count += 1
-                if total_like_count >= like_limit:
+                if total_posts_commented_for_current_user >= total_posts_to_comment_per_user:
                     break
-            if total_like_count >= like_limit:
-                break
-        info(f"Total like count: {total_like_count}")
-
-    def like_comments(self, seed_search_query, like_limit=300):
-        matched_users = self.client.search_users(
-            seed_search_query)  # normally 20 will be returned
-        info(
-            f"Matched users: {len(matched_users)} for query: {seed_search_query}")
-        total_like_count = 0
-        for user in matched_users:
-            recent_posts = self.client.user_medias(user.pk, amount=20)
+            total_users_reached += 1
             info(
-                f"  Recent posts: {len(recent_posts)} for user: {user.username}({user.pk})")
-            for post in recent_posts:
-                if post.has_liked:
-                    # use like to flag if we have commented the post
-                    continue
-                self.client.media_comment(post.pk, self.comment_text)
-                comments = self.client.media_comments(post.pk, amount=25)
-                post_caption_text = post.caption_text.replace(
-                    '\n', ' ').strip()
-                info(
-                    f"      Comments: {len(comments)} for post: {post_caption_text}")
-                like_count = 0
-                for comment in sorted(comments, key=lambda x: x.like_count if x.like_count else 0, reverse=True):
-                    comment_text = comment.text.replace('\n', ' ').strip()
-                    if comment.has_liked:
-                        continue
-                    try:
-                        self.client.comment_like(comment.pk)
-                    except UnknownError as e:
-                        info(f"      Exception in liking comment: {e}")
-                        continue
-                    info(
-                        f"      Like {user.username}'s POST: {post_caption_text}'s COMMENT: {comment_text}")
-                    like_count += 1
-                    total_like_count += 1
-                    if like_count >= 10:
-                        break
-        info(f"Total like count: {total_like_count}")
+                f"Finished commenting on user: {user.username}({user.pk}). total users reached: {total_users_reached}. total posts commented: {total_posts_commented}")
+            if total_users_reached >= total_users_to_reach:
+                break
+        info(f"Total comment reached: {total_posts_commented}")
 
-    def search_users(self, query) -> List:
-        search_users_result = self.client.search_users(query)
-        return search_users_result
+    def get_non_private_influencers(self, seed_query) -> List:
+        search_users_result = self.client.search_users_v1(
+            seed_query, count=200)
+        non_private_users = [
+            u for u in search_users_result if not u.is_private]
+        return non_private_users
 
-    def get_user_id(self, username):
-        user_id = self.client.user_id_from_username(username)
-        return user_id
-
-    def get_followers(self, user_id):
-        followers = self.client.user_followers(user_id)
+    def get_follower_ids(self, user_name, ammount=200) -> Dict:
+        user_id = self.client.user_id_from_username(user_name)
+        followers = self.client.user_followers(user_id, amount=ammount)
         return followers
+
+    def get_all_dm_user_id_by_us(self):
+        all_dms = self.client.direct_threads(amount=200)
+        all_dms_by_us = list(
+            filter(lambda x: x.inviter.pk == str(self.client.user_id), all_dms))
+        all_dms_by_us_user_id = []
+        for all_dm_by_us in all_dms_by_us:
+            for dm_user in all_dm_by_us.users:
+                all_dms_by_us_user_id.append(dm_user.pk)
+        return all_dms_by_us_user_id
+
+    def get_past_dm_user_ids(self):
+        past_dm_user_ids_str = self.redis_client.get(
+            PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
+        if past_dm_user_ids_str:
+            past_dm_user_ids = json.loads(past_dm_user_ids_str)
+        else:
+            past_dm_user_ids = []
+        return past_dm_user_ids
+
+    def record_dm_user_ids(self, user_ids):
+        past_dm_user_ids = self.get_past_dm_user_ids()
+        past_dm_user_ids.extend(user_ids)
+        past_dm_user_ids = list(set(past_dm_user_ids))
+        self.redis_client.set(PAST_DM_USER_IDS_REDIS_KEY,
+                              json.dumps(past_dm_user_ids), ex=60*60*24*7)
+
+    def reach_out_to_influencers(self, seed_query, limit=10):
+        non_private_users = self.get_non_private_influencers(seed_query)
+        info(f"Non private users: {len(non_private_users)}")
+        total_users_reached = 0
+        for user in non_private_users:
+            dm_sent = False
+            try:
+                self.client.direct_send('TESTING MESSAGE!', [user.pk])
+                info(f"Sent DM to user: {user.username}({user.pk})")
+                total_users_reached += 1
+                dm_sent = True
+            except Exception as e:
+                error(f"Exception in sending DM to user: {e}")
+                if 'login_required' in str(e):
+                    error("Instagram login required during sending DM")
+                    self.login_user()
+            if not dm_sent:
+                continue
+            recent_posts = self.client.user_medias(user.pk, amount=2)
+            dm_reminder_posted = 0
+            for post in recent_posts:
+                try:
+                    time.sleep(random.randint(10, 12))
+                    conmment_content = f"🔥 test comment 🔥"
+                    self.client.media_comment(post.pk, conmment_content)
+                    time.sleep(random.randint(10, 12))
+                    info(
+                        f'Commented DM reminder for user: {user.username}({user.pk})')
+                    dm_reminder_posted += 1
+                except Exception as e:
+                    error(f"Exception during commenting post: {e}")
+                    if 'login_required' in str(e):
+                        error("Instagram login required during liking and commenting")
+                        self.login_user()
+            info(
+                f"DM reminder posted for user: {user.username}({user.pk}) - {dm_reminder_posted}")
+            if total_users_reached >= limit:
+                break
+        info(f"Total users reached: {total_users_reached}")
 
 
 if __name__ == "__main__":
     apiManager = InstagramAPIManager(
-        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto)
-    # apiManager.post_image('/Users/chengjiang/Dev/NewsBite/data/crypto_post_candidate_1689670375.jpg',
-    #                       'Coinbase CEO Brian Armstrong to meet with House Democrats to discuss crypto legislation. #Coinbase #crypto #legislation')
-    # apiManager.get_most_similar_posted_ins_and_similarity_score()
-    # print(apiManager.search_users('bitcoin'))
-    # print(apiManager.get_followers('8602634628'))
-    apiManager.like_and_comment_media('bitcoin')
+        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'zlvlpukyz1', 'PtHDQcMq')
 
-    apiManager = InstagramAPIManager(
-        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech)
-    apiManager.like_and_comment_media('stock')
+    # id1 = apiManager.client.user_id_from_username('jaycee.1214')
+    # id2 = apiManager.client.user_id_from_username('crypto_news_pulse')
+    id3 = apiManager.client.user_id_from_username('fintech_news_pulse')
+    print(id3)
+    # un = apiManager.client.username_from_user_id('57783781091')
+    # print(un)
+    # info1 = apiManager.client.user_info('57783781091')
+    # info2 = apiManager.client.user_info('60853548164')
+    # msg = apiManager.client.direct_send(
+    #     "hi", [id1, id2])
+    # msg = apiManager.client.direct_send(
+    #     '🔥 Fresh crypto currency news updates help you make right quality decisions! 🔥\n @crypto_news_pulse <<< Follow to stay updated!', ['545357425',  '57783781091'])  # bad: '57783781091', '35830230157', '8788712384' good: '60853548164' '53120050', '8788712384'
+    # info(msg)
+    # thread_id = msg.thread_id
+    # user_ids = [57783781091, 35830230157,
+    #             60853548164, 53120050, 8788712384, id3]
+    # for user_id in user_ids:
+    #     success = apiManager.client.add_users_to_direct_thread(
+    #         thread_id=thread_id, user_ids=[user_id])
+    #     info(f'{user_id} - {success}')
+    # apiManager.client.direct_send(
+    #     '🔥 Fresh crypto currency news updates help you make right quality decisions! 🔥\n @crypto_news_pulse <<< Follow to stay updated!', thread_ids=[thread_id])
+    # followers = apiManager.get_followers('bitboy_crypto')
+    # print(len(followers))
+    # for k in followers.keys():
+    #     f = followers[k]
+    #     print(f'{k} - {f.username}')
+    # print(apiManager.get_all_dm_user_id_by_us())
+    # crypto_trader_query = 'crypto trader'
+    # trader_users = apiManager.get_influencers(crypto_trader_query)
+    # print(len(trader_users))
+    # apiManager.reach_out_to_influencers('jaycee.1214', limit=1)
+
+    # apiManager.like_and_comment_media('bitcoin')
+
+    # apiManager = InstagramAPIManager(
+    #     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech)
+    # apiManager.like_and_comment_media('stock')
 
 # media = cl.photo_upload(
 #     "/Users/chengjiang/Dev/NewsBite/poster.jpg",

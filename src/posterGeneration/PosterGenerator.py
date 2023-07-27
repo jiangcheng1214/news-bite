@@ -16,6 +16,7 @@ class PosterGenerator:
         self.canvas_height = canvas_height
         self.text_font = text_font
         self.text_font_size = text_font_size
+        self.line_spacing = text_font_size // 5
         self.margin_size = text_font_size // 2
 
     def resize_image(self, image, resize_width, resize_height):
@@ -64,23 +65,19 @@ class PosterGenerator:
         rectangle_start_y = self.margin_size
         rectangle_end_x = self.canvas_width - self.margin_size
         rectangle_end_y = self.margin_size + self.text_font_size * \
-            len(wrapped_text) + self.margin_size
+            len(wrapped_text) + self.line_spacing * \
+            (len(wrapped_text)-1) + self.margin_size
         draw.rectangle(
             (rectangle_start_x, rectangle_start_y, rectangle_end_x, rectangle_end_y), fill=(255, 255, 255))
         for line in wrapped_text:
             line_width = draw.textlength(line, font=text_font)
             x = (self.canvas_width - line_width) // 2
-            # draw white background
-            # draw.rectangle(
-            #     (self.margin_size, y, self.canvas_width - self.margin_size, y + self.text_font_size + self.margin_size), fill=(255, 255, 255))
             draw.text((x, y), line, fill=text_color, font=text_font)
-            y += self.text_font_size
-        y += self.text_font_size // 2
+            y += self.text_font_size + self.line_spacing
+        y += self.text_font_size // 2 - self.line_spacing
         safe_width = self.canvas_width - self.text_font_size
         safe_height = self.canvas_height - y - self.text_font_size // 2
         image = self.fetch_image(image_url)
-        # response = requests.get(headers=headers, url=image_url)
-        # image = Image.open(BytesIO(response.content))
         resized_image = self.resize_image(image, safe_width, safe_height)
         image_width, image_height = resized_image.size
         image_position = ((self.canvas_width - image_width) //

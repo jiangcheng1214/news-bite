@@ -9,3 +9,4 @@ src/myenv
 .DS_Store
 *.pem
 cache/
+credentials/
