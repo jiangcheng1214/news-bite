@@ -14,7 +14,6 @@ class BufferedRedisWriter:
         self.filename_hour = filename_hour
         self.flush_interval = flush_interval
         self.last_flush_time = time.monotonic()
-        self.redis = RedisClient().connect()
 
     @rabbitmq_decorator('twitter_raw_data')
     def append(self, data):
@@ -22,7 +21,7 @@ class BufferedRedisWriter:
         current_file_index = get_current_hour() if self.filename_hour == 0 else self.filename_hour
         sub_key = f":{date_dir_name}:{self.sub_key_prefix}:{current_file_index}"
         key = self.master_key + sub_key
-        self.redis.rpush(key, data)
+        RedisClient.shared().rpush(key, data)
 
         data = json.loads(data)
         return [ data['tweet_type'], data ]

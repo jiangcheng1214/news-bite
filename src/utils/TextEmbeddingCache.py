@@ -21,9 +21,8 @@ class TextEmbeddingCache:
 
     def __init__(self):
         assert TextEmbeddingCache._instance is None, "Singleton class"
-        self.redis_client = RedisClient().connect()
         self.embedding_model = "text-embedding-ada-002"
-        embedding_dict_json_string = self.redis_client.get(
+        embedding_dict_json_string = RedisClient.shared().get(
             REDIS_TWEET_EMBEDDING_DICT_KEY)
         if embedding_dict_json_string is None:
             self.embedding_dict_cache = {}
@@ -82,8 +81,8 @@ class TextEmbeddingCache:
                 f"Saving embedding cache (size: {len(self.embedding_dict_cache)}) to redis")
             embedding_dict_cache_json_string = json.dumps(
                 self.embedding_dict_cache)
-            self.redis_client.set(REDIS_TWEET_EMBEDDING_DICT_KEY,
-                                  embedding_dict_cache_json_string)
+            RedisClient.shared().set(REDIS_TWEET_EMBEDDING_DICT_KEY,
+                                     embedding_dict_cache_json_string)
             self.last_save_time = time.time()
         except Exception as e:
             error(f"Failed to save embedding cache: {e}")
@@ -91,7 +90,7 @@ class TextEmbeddingCache:
     def clear(self):
         try:
             self.embedding_dict_cache = {}
-            self.redis_client.delete(REDIS_TWEET_EMBEDDING_DICT_KEY)
+            RedisClient.shared().delete(REDIS_TWEET_EMBEDDING_DICT_KEY)
             info("Embedding cache cleared")
         except Exception as e:
             error(f"Failed to clear embedding cache: {e}")

@@ -28,7 +28,6 @@ class InstagramAPIManager:
     def __init__(self, accountType: InstagramAPIManagerAccountType, username=None, password=None, force_login=False):
         self.accountType = accountType
         self.posterGenerator = PosterGenerator()
-        self.redis_client = RedisClient().connect()
         self.client = Client()
         self.client.delay_range = [0.5, 1.5]
         if accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto:
@@ -241,7 +240,7 @@ class InstagramAPIManager:
         return all_dms_by_us_user_id
 
     def get_past_dm_user_ids(self):
-        past_dm_user_ids_str = self.redis_client.get(
+        past_dm_user_ids_str = RedisClient.shared().get(
             PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
         if past_dm_user_ids_str:
             past_dm_user_ids = json.loads(past_dm_user_ids_str)
@@ -253,8 +252,8 @@ class InstagramAPIManager:
         past_dm_user_ids = self.get_past_dm_user_ids()
         past_dm_user_ids.extend(user_ids)
         past_dm_user_ids = list(set(past_dm_user_ids))
-        self.redis_client.set(PAST_DM_USER_IDS_REDIS_KEY,
-                              json.dumps(past_dm_user_ids), ex=60*60*24*7)
+        RedisClient.shared().set(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
+                                 json.dumps(past_dm_user_ids), ex=60*60*24*7)
 
     def reach_out_to_influencers(self, seed_query, limit=10):
         non_private_users = self.get_non_private_influencers(seed_query)
