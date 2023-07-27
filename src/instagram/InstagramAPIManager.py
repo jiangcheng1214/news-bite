@@ -1,6 +1,7 @@
 import json
 import random
 import time
+from utils.Constants import PAST_DM_USER_IDS_REDIS_KEY_CRYPTO, PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO, TODO_DM_USER_IDS_REDIS_KEY_CRYPTO
 from utils.RedisClient import RedisClient
 from utils.Logging import error, info, warn
 from instagrapi import Client
@@ -20,8 +21,61 @@ class InstagramAPIManagerAccountType(Enum):
     InstagramAPIManagerAccountTypeOther = 2
 
 
-PAST_DM_USER_IDS_REDIS_KEY_CRYPTO = 'past_dm_user_ids_crypto'
-TODO_DM_USER_IDS_REDIS_KEY_CRYPTO = 'todo_dm_user_ids_crypto'
+def get_past_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    past_dm_user_ids_str = RedisClient.shared().get(
+        PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
+    if past_dm_user_ids_str:
+        past_dm_user_ids = set(json.loads(past_dm_user_ids_str))
+    else:
+        past_dm_user_ids = set()
+    return past_dm_user_ids
+
+
+def record_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: List[str]):
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    past_dm_user_ids = get_past_dm_user_ids(accountType)
+    past_dm_user_ids.update(user_ids)
+    past_dm_user_ids = list(past_dm_user_ids)
+    RedisClient.shared().set(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
+                             json.dumps(past_dm_user_ids), ex=60*60*24*7)
+
+def get_past_visited_influencer_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    past_visited_influencer_ids_str = RedisClient.shared().get(
+        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO)
+    if past_visited_influencer_ids_str:
+        past_visited_influencer_ids = set(
+            json.loads(past_visited_influencer_ids_str))
+    else:
+        past_visited_influencer_ids = set()
+    return past_visited_influencer_ids
+
+
+def record_visited_influencer_id(accountType: InstagramAPIManagerAccountType, influencer_id: str):
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    past_visited_influencer_ids = get_past_visited_influencer_ids(accountType)
+    past_visited_influencer_ids.add(influencer_id)
+    past_visited_influencer_ids = list(past_visited_influencer_ids)
+    RedisClient.shared().set(PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
+                             json.dumps(past_visited_influencer_ids), ex=60*60*24*7)
+
+
+def get_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    todo_dm_user_ids_str = RedisClient.shared().get(
+        TODO_DM_USER_IDS_REDIS_KEY_CRYPTO)
+    if todo_dm_user_ids_str:
+        todo_dm_user_ids = set(json.loads(todo_dm_user_ids_str))
+    else:
+        todo_dm_user_ids = set()
+    return todo_dm_user_ids
+
+
+def set_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: set[str]):
+    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    RedisClient.shared().set(TODO_DM_USER_IDS_REDIS_KEY_CRYPTO,
+                             json.dumps(list(user_ids)), ex=60*60*24*7)
 
 
 class InstagramAPIManager:
@@ -217,6 +271,17 @@ class InstagramAPIManager:
                 break
         info(f"Total comment reached: {total_posts_commented}")
 
+    def get_commenter_user_ids(self, poster_user_id) -> set[str]:
+        post_amount = 20
+        user_medias = self.client.user_medias(poster_user_id, amount=post_amount)
+        commenter_ids = set()
+        for media in user_medias:
+            comments = self.client.media_comments(media.pk)
+            for comment in comments:
+                commenter_ids.add(comment.user.pk)
+        info(f"{len(commenter_ids)} commenter ids fetched from {poster_user_id}")
+        return commenter_ids
+
     def get_non_private_influencers(self, seed_query) -> List:
         search_users_result = self.client.search_users_v1(
             seed_query, count=200)
@@ -228,32 +293,6 @@ class InstagramAPIManager:
         user_id = self.client.user_id_from_username(user_name)
         followers = self.client.user_followers(user_id, amount=ammount)
         return followers
-
-    def get_all_dm_user_id_by_us(self):
-        all_dms = self.client.direct_threads(amount=200)
-        all_dms_by_us = list(
-            filter(lambda x: x.inviter.pk == str(self.client.user_id), all_dms))
-        all_dms_by_us_user_id = []
-        for all_dm_by_us in all_dms_by_us:
-            for dm_user in all_dm_by_us.users:
-                all_dms_by_us_user_id.append(dm_user.pk)
-        return all_dms_by_us_user_id
-
-    def get_past_dm_user_ids(self):
-        past_dm_user_ids_str = RedisClient.shared().get(
-            PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
-        if past_dm_user_ids_str:
-            past_dm_user_ids = json.loads(past_dm_user_ids_str)
-        else:
-            past_dm_user_ids = []
-        return past_dm_user_ids
-
-    def record_dm_user_ids(self, user_ids):
-        past_dm_user_ids = self.get_past_dm_user_ids()
-        past_dm_user_ids.extend(user_ids)
-        past_dm_user_ids = list(set(past_dm_user_ids))
-        RedisClient.shared().set(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
-                                 json.dumps(past_dm_user_ids), ex=60*60*24*7)
 
     def reach_out_to_influencers(self, seed_query, limit=10):
         non_private_users = self.get_non_private_influencers(seed_query)
@@ -327,7 +366,6 @@ if __name__ == "__main__":
     # for k in followers.keys():
     #     f = followers[k]
     #     print(f'{k} - {f.username}')
-    # print(apiManager.get_all_dm_user_id_by_us())
     # crypto_trader_query = 'crypto trader'
     # trader_users = apiManager.get_influencers(crypto_trader_query)
     # print(len(trader_users))

@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import redis
 import threading
 
-
 class RedisClient:
     _instance_lock = threading.Lock()
     _connection = None
