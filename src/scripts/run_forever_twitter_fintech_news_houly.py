@@ -1,7 +1,8 @@
 import datetime
 from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
-from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType, TwitterPostCandidate
+from twitter.TwitterAPIManager import TwitterAPIManager, TwitterAPIManagerAccountType
+from newsAPI.NewsAPIItem import NewsAPIItem
 from utils.Logging import info, error
 import time
 from typing import List
@@ -28,7 +29,8 @@ def get_recent_general_news(no_video=False) -> List[GeneralNews]:
             error(f"Exception in getting general news: {e}\n{news}")
             continue
     if no_video:
-        recent_news_list = [ x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
+        recent_news_list = [
+            x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
     recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
     recent_news_list.sort(key=lambda x: x.type, reverse=True)
     info(f"Recent general news count: {len(recent_news_list)}")
@@ -47,7 +49,8 @@ def get_recent_tickers_news(no_video=False) -> List[GeneralNews]:
             error(f"Exception in getting ticker news: {e}\n{news}")
             continue
     if no_video:
-        recent_news_list = [ x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
+        recent_news_list = [
+            x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
     recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
     recent_news_list.sort(key=lambda x: x.type, reverse=True)
     info(f"Recent ticker news count: {len(recent_news_list)}")
@@ -66,7 +69,7 @@ def run():
         content = tweet_dict['tweet_content']
         sentiment = n.sentiment
         is_event = n.event_id is not None
-        candidate = TwitterPostCandidate({
+        candidate = NewsAPIItem({
             'news_content': content,
             "news_url": n.news_url,
             "media_url": n.image_url,

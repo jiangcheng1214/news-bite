@@ -2,7 +2,7 @@ import json
 import time
 import os
 from utils.TextEmbeddingCache import TextEmbeddingCache
-from twitter.TwitterAPIManager import TwitterPostCandidate
+from newsAPI.NewsAPIItem import NewsAPIItem
 from utils.Logging import error, info, warn
 from threads import Threads
 from enum import Enum
@@ -115,7 +115,7 @@ class ThreadsAPIManager:
                 most_similar_post_id = recent_post[1]
         return most_similar_post_id, most_similar_post_similarity_score
 
-    def post_threads(self, candidates: List[TwitterPostCandidate], post_limit: int = THREADS_DEFAULT_POST_LIMIT):
+    def post_threads(self, candidates: List[NewsAPIItem], post_limit: int = THREADS_DEFAULT_POST_LIMIT):
         if len(candidates) == 0:
             return
         composed_threads = []

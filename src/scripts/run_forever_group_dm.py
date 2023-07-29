@@ -63,9 +63,10 @@ def maintain_todo_dm_user_pool(target=dm_pool_size_target):
                 todo_dm_user_ids_from_current_session = set()
                 if influencer.pk in visited_influencer_ids:
                     continue
-                candidate_user_ids = apiManager.get_follower_ids(
-                    influencer.username)
-                # candidate_user_ids = apiManager.get_commenter_user_ids(influencer.pk)
+                # candidate_user_ids = apiManager.get_follower_ids(
+                #     influencer.username)
+                candidate_user_ids = apiManager.get_commenter_user_ids(
+                    influencer.pk)
                 if len(candidate_user_ids) == 0:
                     error(
                         f"0 followers for influencer {influencer.username}")
@@ -146,7 +147,6 @@ def group_dm():
         if len(users_in_this_group) < 5:
             error(
                 f"Failed to add enough users to group for account {un}")
-            continue
         info(
             f"DMing from {un} to {len(users_in_this_group)} users, index: {i}")
         try:
@@ -188,16 +188,18 @@ if __name__ == "__main__":
     while True:
         try:
             current_start_time = datetime.datetime.now()
+
             hour = current_start_time.hour
             next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
                                     ).replace(minute=0, second=0, microsecond=0)
+            next_hour_start_ts = next_hour_start_time.timestamp()
             maintain_todo_dm_user_pool()
             if hour % 2 == 0:
                 group_dm()
-            sec_until_next_start = (
-                next_hour_start_time - datetime.datetime.now()).seconds
+            current_ts = datetime.datetime.now().timestamp()
+            sec_until_next_start = next_hour_start_ts - current_ts
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
-            time.sleep(sec_until_next_start+5)
+            time.sleep(sec_until_next_start)
         except Exception as e:
             error(f"Exception in sending dm: {e}")
             time.sleep(300)

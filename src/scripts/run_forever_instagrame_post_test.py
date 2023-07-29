@@ -14,11 +14,9 @@ post_hour_interval = 3
 
 cryptoNewsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeCrypto)
 langChainAPIManager = LangChainAPIManager()
-threadAPIManager = ThreadsAPIManager(
-    ThreadsAPIManagerAccountType.ThreadsAPIManagerAccountTypeCrypto)
 posterGenerator = PosterGenerator()
 instagramAPIManager = InstagramAPIManager(
-    InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto)
+    InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, username='jeirlizeay', password='LzYjnWU1')
 
 
 def get_recent_general_news(no_video=False) -> List[GeneralNews]:
@@ -62,13 +60,13 @@ def run():
         })
         news_items.append(candidate)
     info(f"Post candidate count: {len(news_items)}")
-    threadAPIManager.post_threads(
-        news_items, post_limit=5)
     try:
         publish_candidates = instagramAPIManager.generate_publish_candidates(
             news_items)
-        instagramAPIManager.publish_image_post(publish_candidates, publish_limit=2)
-        instagramAPIManager.publish_image_story(publish_candidates, publish_limit=2)
+        instagramAPIManager.publish_image_post(
+            publish_candidates, publish_limit=2)
+        instagramAPIManager.publish_image_story(
+            publish_candidates, publish_limit=2)
     except Exception as e:
         if 'login_required' in str(e):
             error("Instagram login required during posting image")
@@ -84,18 +82,4 @@ def run():
 
 
 if __name__ == "__main__":
-    while True:
-        try:
-            current_start_time = datetime.datetime.now()
-            hour = current_start_time.hour
-            next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
-                                    ).replace(minute=0, second=0, microsecond=0)
-            if hour % post_hour_interval == 0:
-                run()
-            sec_until_next_start = (
-                next_hour_start_time - datetime.datetime.now()).seconds
-            info(f"Seconds until the next hour starts: {sec_until_next_start}")
-            time.sleep(sec_until_next_start+5)
-        except Exception as e:
-            error(f"Exception in running twitter summary generation: {e}")
-            time.sleep(60)
+    run()

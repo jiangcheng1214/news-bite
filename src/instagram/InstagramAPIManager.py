@@ -1,8 +1,11 @@
 import json
 import random
 import time
+from instagram.InstagramPostCandidate import InstagramPostCandidate
+from newsAPI.NewsAPIItem import NewsAPIItem
 from utils.Constants import PAST_DM_USER_IDS_REDIS_KEY_CRYPTO, PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO, TODO_DM_USER_IDS_REDIS_KEY_CRYPTO
 from utils.RedisClient import RedisClient
+from instagrapi.types import StoryHashtag, StoryLink, StoryMention
 from utils.Logging import error, info, warn
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired, UnknownError
@@ -39,6 +42,7 @@ def record_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: Li
     past_dm_user_ids = list(past_dm_user_ids)
     RedisClient.shared().set(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
                              json.dumps(past_dm_user_ids), ex=60*60*24*7)
+
 
 def get_past_visited_influencer_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
     assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
@@ -104,6 +108,8 @@ class InstagramAPIManager:
             self.password = password
             self.session_path = os.path.join(os.path.dirname(
                 __file__), '..', '..', 'cache', f'instagram_session_{self.username}.json')
+            self.hashtag_appending = ''
+            self.comment_text_suffix = ''
         self.login_user(force_login=force_login)
 
     def login_user(self, force_login=False):
@@ -149,26 +155,32 @@ class InstagramAPIManager:
     def generate_poster(self, text, image_url, sentiment):
         timestamp = int(time.time())
         prefix = 'crypto' if self.accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto else 'fintech'
-        output_path = os.path.join(os.path.dirname(
+        post_image_output_path = os.path.join(os.path.dirname(
             __file__), '..', '..', 'data', f'{prefix}_{timestamp}.jpg')
+        story_image_output_path = os.path.join(os.path.dirname(
+            __file__), '..', '..', 'data', f'{prefix}_{timestamp}_story.jpg')
         try:
             info(
-                f"Generating poster for instagram post: {text} - {output_path}")
-            self.posterGenerator.generate_poster(
-                text, image_url, sentiment, output_path)
+                f"Generating poster for instagram post: {text} - {post_image_output_path}")
+            self.posterGenerator.generate_instagram_poster(
+                text, image_url, sentiment, post_image_output_path, story_image_output_path)
+            if os.path.exists(post_image_output_path):
+                if os.path.exists(story_image_output_path):
+                    return post_image_output_path, story_image_output_path
+                else:
+                    return post_image_output_path, None
+            else:
+                return None, None
         except Exception as e:
             error(f"Exception in generating poster: {e}")
-        if os.path.exists(output_path):
-            return output_path
-        else:
-            return None
+            return None, None
 
-    def post_image(self, candidates, post_limit=1):
-        posted_count = 0
-        for candidate in candidates:
-            content = candidate.news_content
-            image_url = candidate.image_url
-            hashtags = candidate.hashtags
+    def generate_publish_candidates(self, news_items: List[NewsAPIItem]) -> List[InstagramPostCandidate]:
+        post_candidates = []
+        for newsItem in news_items:
+            content = newsItem.news_content
+            image_url = newsItem.image_url
+            hashtags = newsItem.hashtags
             if type(hashtags) == list:
                 hashtag_list = hashtags
             elif type(hashtags) == str:
@@ -191,26 +203,63 @@ class InstagramAPIManager:
                 info(
                     f"Skip posting: {content}. Most similar post similarity score: {most_similar_post_similarity_score} - {most_similar_post}")
                 continue
-            image_path = self.generate_poster(
-                content, image_url, candidate.sentiment)
-            if image_path is None:
-                error(f"Failed to generate poster for {content}")
+            post_image_path, story_image_path = self.generate_poster(
+                content, image_url, newsItem.sentiment)
+
+            postCandidate = InstagramPostCandidate({
+                "content_with_hashtags": content_with_hashtags,
+                "post_image_path": post_image_path,
+                "story_image_path": story_image_path,
+                "rank_score": newsItem.rank_score,
+                "sentiment": newsItem.sentiment
+            })
+            post_candidates.append(postCandidate)
+        return post_candidates
+
+    def publish_image_post(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
+        publish_count = 0
+        for candidate in publish_candidates:
+            if candidate.post_image_path is None:
                 continue
             try:
                 self.client.photo_upload(
-                    image_path,
-                    content_with_hashtags
+                    candidate.post_image_path,
+                    candidate.content_with_hashtags
                 )
-                info(f"Posted instagram image: {image_path}")
-                posted_count += 1
+                info(f"published instagram image: {candidate.post_image_path}")
+                publish_count += 1
             except Exception as e:
                 if 'feedback_required: We restrict certain activity to protect our community' in str(e):
-                    info(f"Posted instagram image: {image_path}")
-                    posted_count += 1
+                    info(
+                        f"Published instagram image: {candidate.post_image_path}")
+                    publish_count += 1
                 else:
                     error(f"Exception in posting instagram image: {e}")
             finally:
-                if posted_count >= post_limit:
+                if publish_count >= publish_limit:
+                    break
+
+    def publish_image_story(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
+        my_stories = self.client.user_stories(self.client.user_id)
+        if len(my_stories) >= 2:
+            info("Skip publishing image story since there are already 2 stories")
+            return
+        published_story_count = 0
+        for candidate in publish_candidates:
+            if candidate.story_image_path is None:
+                continue
+            try:
+                self.client.photo_upload_to_story(
+                    candidate.story_image_path, links=[])
+                published_story_count += 1
+            except Exception as e:
+                if 'feedback_required: We restrict certain activity to protect our community' in str(e):
+                    info(
+                        f"Published instagram story: {candidate.story_image_path}")
+                    publish_count += 1
+                error(f"Exception in publishing instagram story: {e}")
+            finally:
+                if published_story_count >= publish_limit:
                     break
 
     def get_most_similar_posted_ins_and_similarity_score(self, content: str):
@@ -273,7 +322,8 @@ class InstagramAPIManager:
 
     def get_commenter_user_ids(self, poster_user_id) -> set[str]:
         post_amount = 20
-        user_medias = self.client.user_medias(poster_user_id, amount=post_amount)
+        user_medias = self.client.user_medias(
+            poster_user_id, amount=post_amount)
         commenter_ids = set()
         for media in user_medias:
             comments = self.client.media_comments(media.pk)
@@ -337,12 +387,17 @@ class InstagramAPIManager:
 
 if __name__ == "__main__":
     apiManager = InstagramAPIManager(
-        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'zlvlpukyz1', 'PtHDQcMq')
+        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'ee7ga3qr', 'm3mrcWmw')
+    apiManager.publish_image_story(
+        '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', 'crypto_news_pulse')
 
     # id1 = apiManager.client.user_id_from_username('jaycee.1214')
     # id2 = apiManager.client.user_id_from_username('crypto_news_pulse')
-    id3 = apiManager.client.user_id_from_username('fintech_news_pulse')
-    print(id3)
+    # id3 = apiManager.client.user_id_from_username('fintech_news_pulse')
+    # print(id3)
+    # commenter_user_ids = apiManager.get_commenter_user_ids(id2)
+    # for commenter_user_id in commenter_user_ids:
+    #     print(apiManager.client.username_from_user_id(commenter_user_id))
     # un = apiManager.client.username_from_user_id('57783781091')
     # print(un)
     # info1 = apiManager.client.user_info('57783781091')

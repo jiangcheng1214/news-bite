@@ -3,7 +3,7 @@ from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManag
 from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
 from threadsMeta.ThreadsAPIManager import ThreadsAPIManager, ThreadsAPIManagerAccountType
-from twitter.TwitterAPIManager import TwitterPostCandidate
+from newsAPI.NewsAPIItem import NewsAPIItem
 from utils.Logging import info, error
 import time
 from typing import List
@@ -70,7 +70,7 @@ def run():
         content = candidate_dict['tweet_content']
         sentiment = n.sentiment
         is_event = n.event_id is not None
-        candidate = TwitterPostCandidate({
+        candidate = NewsAPIItem({
             'news_content': content,
             "news_url": n.news_url,
             "image_url": n.image_url,
@@ -91,10 +91,14 @@ def run():
         ticker_news_post_candidate_list, post_limit=4)
 
     try:
-        instagramAPIManager.post_image(
-            general_news_post_candidate_list, post_limit=1)
-        instagramAPIManager.post_image(
-            ticker_news_post_candidate_list, post_limit=1)
+        general_news_candidates = instagramAPIManager.generate_publish_candidates(
+            general_news_post_candidate_list)
+        instagramAPIManager.publish_image_post(general_news_candidates, publish_limit=1)
+        instagramAPIManager.publish_image_story(general_news_candidates, publish_limit=1)
+        ticker_news_candidates = instagramAPIManager.generate_publish_candidates(
+            ticker_news_post_candidate_list)
+        instagramAPIManager.publish_image_post(ticker_news_candidates, publish_limit=1)
+        instagramAPIManager.publish_image_story(ticker_news_candidates, publish_limit=1)
     except Exception as e:
         if 'login_required' in str(e):
             error("Instagram login required during posting image")

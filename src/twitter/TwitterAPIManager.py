@@ -13,6 +13,7 @@ from utils.Logging import error, info, warn
 from utils.Utilities import OpenaiModelVersion, get_clean_text, shorten_url
 from utils.Constants import TWEET_LENGTH_CHAR_LIMIT, TWEET_DEFAULT_POST_LIMIT, TWEET_MATCH_SCORE_THRESHOLD, TWEET_TOPIC_RELAVANCE_SCORE_THRESHOLD, TWEET_SIMILARITY_FOR_POSTING_GUARD_THRESHOLD, TWEET_VIDEO_DURATION_LIMIT_IN_SECOND_DEFAULT, TWITTER_ACCOUNT_FOLLOWER_COUNT_REACTION_THRESHOLD, TWEET_REPLY_MAX_AGE_SEC, TWEET_THREAD_COVERAGE_SEC, TWEET_SIMILARITY_FOR_REPLY, TWITTER_BEARER_TOKEN_EVAR_KEY
 from utils.Utilities import trim_video
+from newsAPI.NewsAPIItem import NewsAPIItem
 import json
 from enum import Enum
 from typing import List
@@ -24,17 +25,6 @@ load_dotenv()
 class TwitterAPIManagerAccountType(Enum):
     TwitterAPIManagerAccountTypeCrypto = 0
     TwitterAPIManagerAccountTypeFintech = 1
-
-
-class TwitterPostCandidate:
-    def __init__(self, initial_dict: dict):
-        self.news_url = initial_dict.get("news_url")
-        self.image_url = initial_dict.get("image_url")
-        self.news_content = initial_dict.get("news_content")
-        self.hashtags = initial_dict.get("hashtags")
-        self.sentiment = initial_dict.get("sentiment")
-        self.is_event = initial_dict.get("is_event")
-        self.is_video = initial_dict.get("is_video")
 
 
 class TwitterAPIManager:
@@ -163,7 +153,7 @@ class TwitterAPIManager:
                 time.sleep(5)
                 return self.upload_video(video_path, retry=retry+1)
 
-    def post_tweets(self, tweets: List[TwitterPostCandidate], post_limit: int = TWEET_DEFAULT_POST_LIMIT):
+    def post_tweets(self, tweets: List[NewsAPIItem], post_limit: int = TWEET_DEFAULT_POST_LIMIT):
         if len(tweets) == 0:
             return
         post_count = 0
@@ -549,7 +539,7 @@ if __name__ == "__main__":
         tweet_dict = langChainAPIManager.generate_tweet_dict(
             title=n.news_title, abstract=n.news_text, topics=n.topics, source=n.source_name)
         content = tweet_dict['tweet_content']
-        candidate = TwitterPostCandidate({
+        candidate = NewsAPIItem({
             'news_content': content,
             "news_url": n.news_url,
             "media_url": n.image_url,
