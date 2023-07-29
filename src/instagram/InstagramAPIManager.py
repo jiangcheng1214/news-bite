@@ -211,7 +211,8 @@ class InstagramAPIManager:
                 "post_image_path": post_image_path,
                 "story_image_path": story_image_path,
                 "rank_score": newsItem.rank_score,
-                "sentiment": newsItem.sentiment
+                "sentiment": newsItem.sentiment,
+                "news_url": newsItem.news_url
             })
             post_candidates.append(postCandidate)
         return post_candidates
@@ -241,7 +242,7 @@ class InstagramAPIManager:
 
     def publish_image_story(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
         my_stories = self.client.user_stories(self.client.user_id)
-        if len(my_stories) >= 2:
+        if len(my_stories) >= 3:
             info("Skip publishing image story since there are already 2 stories")
             return
         published_story_count = 0
@@ -249,8 +250,9 @@ class InstagramAPIManager:
             if candidate.story_image_path is None:
                 continue
             try:
+                links = [StoryLink(webUri=candidate.news_url)],
                 self.client.photo_upload_to_story(
-                    candidate.story_image_path, links=[])
+                    candidate.story_image_path, links=links)
                 published_story_count += 1
             except Exception as e:
                 if 'feedback_required: We restrict certain activity to protect our community' in str(e):

@@ -97,6 +97,7 @@ def group_dm():
     todo_dm_user_ids = get_todo_dm_user_ids(
         InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto)
     todo_dm_user_ids_list = list(todo_dm_user_ids)
+    ig_accounts.reverse()
     for account in ig_accounts:
         un, pw = account
         try:
@@ -158,7 +159,7 @@ def group_dm():
                 f"Exception in DMing photo share: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
         try:
             msg = apiManager.client.direct_send(
-                '🔥 Hot crypto currency news updates 🔥\n @crypto_news_pulse <<< Follow and catch opportunities!', thread_ids=[thread_id])
+                '🔥 Crypto Currency BUY/SELL Signals Sharing 🔥\n @crypto_news_pulse <<< Follow to be updated', thread_ids=[thread_id])
             info(f"DM result: {msg}")
             info(
                 f"DMed from {un} to {len(users_in_this_group)} users, index: {i}, failed to add user count: {failed_to_add_user_count}")
@@ -194,7 +195,7 @@ if __name__ == "__main__":
                                     ).replace(minute=0, second=0, microsecond=0)
             next_hour_start_ts = next_hour_start_time.timestamp()
             maintain_todo_dm_user_pool()
-            if hour % 2 == 0:
+            if hour % 4 == 0:
                 group_dm()
             current_ts = datetime.datetime.now().timestamp()
             sec_until_next_start = next_hour_start_ts - current_ts

@@ -5,6 +5,7 @@ class InstagramPostCandidate:
         self.story_image_path = initial_dict.get("story_image_path")
         self.rank_score = initial_dict.get("rank_score")
         self.sentiment = initial_dict.get("sentiment")
+        self.news_url = initial_dict.get("news_url")
 
     def __repr__(self):
         return {
