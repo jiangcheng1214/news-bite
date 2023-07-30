@@ -9,7 +9,7 @@ from utils.Logging import info, error
 import time
 
 users_to_invite_per_group = 24
-dm_pool_size_multiplier = 1.5
+dm_pool_size_multiplier = 1
 my_user_id = '545357425'
 crypto_user_id = '60768462406'
 fintech_user_id = '60649820282'
@@ -78,12 +78,15 @@ def maintain_todo_dm_user_pool(target=dm_pool_size_target):
                     if candidate_user_id not in past_dm_user_ids and candidate_user_id not in todo_dm_user_ids_from_current_session and candidate_user_id not in todo_dm_user_ids:
                         todo_dm_user_ids_from_current_session.add(
                             candidate_user_id)
-                info(
-                    f"newly detected users pool to DM: {len(todo_dm_user_ids_from_current_session)}, target: {dm_pool_size_target} influencer: {influencer.username}")
                 time.sleep(2)
+                base_pool_size = len(todo_dm_user_ids)
+                delta_pool_size = len(todo_dm_user_ids_from_current_session)
                 todo_dm_user_ids.update(todo_dm_user_ids_from_current_session)
+                current_pool_size = len(todo_dm_user_ids)
                 set_todo_dm_user_ids(
                     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto, todo_dm_user_ids)
+                info(
+                    f"users pool size (before: ${base_pool_size}) / (delta: ${delta_pool_size}) / (current: ${current_pool_size}) / (target: {dm_pool_size_target}) influencer: {influencer.username}")
         except Exception as e:
             error(
                 f"Exception in getting followers for seed influencers for account {apiManager.username}: {e}")
@@ -150,16 +153,16 @@ def group_dm():
                 f"Failed to add enough users to group for account {un}")
         info(
             f"DMing from {un} to {len(users_in_this_group)} users, index: {i}")
-        try:
-            photo_share = apiManager.client.direct_send_photo(
-                path=crypto_poster_photo_path, thread_ids=[thread_id])
-            info(f"DM photo share result: {photo_share}")
-        except Exception as e:
-            error(
-                f"Exception in DMing photo share: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
+        # try:
+        #     photo_share = apiManager.client.direct_send_photo(
+        #         path=crypto_poster_photo_path, thread_ids=[thread_id])
+        #     info(f"DM photo share result: {photo_share}")
+        # except Exception as e:
+        #     error(
+        #         f"Exception in DMing photo share: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
         try:
             msg = apiManager.client.direct_send(
-                '🔥 Crypto Currency BUY/SELL Signals Sharing 🔥\n @crypto_news_pulse <<< Follow to be updated', thread_ids=[thread_id])
+                '🔥 Crypto Currency Breaking News Updates 🔥\n🔥 BUY / SELL Signal Sharing 🔥\n\n>>> @crypto_news_pulse <<< Follow and be $RICH!!', thread_ids=[thread_id])
             info(f"DM result: {msg}")
             info(
                 f"DMed from {un} to {len(users_in_this_group)} users, index: {i}, failed to add user count: {failed_to_add_user_count}")

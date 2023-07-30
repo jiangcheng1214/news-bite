@@ -250,7 +250,8 @@ class InstagramAPIManager:
             if candidate.story_image_path is None:
                 continue
             try:
-                links = [StoryLink(webUri=candidate.news_url)],
+                # links = [StoryLink(webUri=candidate.news_url)]
+                links = []
                 self.client.photo_upload_to_story(
                     candidate.story_image_path, links=links)
                 published_story_count += 1
