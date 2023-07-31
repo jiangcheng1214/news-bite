@@ -90,12 +90,14 @@ if __name__ == "__main__":
             hour = current_start_time.hour
             next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
                                     ).replace(minute=0, second=0, microsecond=0)
+            next_hour_start_ts = next_hour_start_time.timestamp()
+
             if hour % post_hour_interval == 0:
                 run()
-            sec_until_next_start = (
-                next_hour_start_time - datetime.datetime.now()).seconds
+            current_ts = datetime.datetime.now().timestamp()
+            sec_until_next_start = max(next_hour_start_ts - current_ts, 0)
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
-            time.sleep(sec_until_next_start+5)
+            time.sleep(sec_until_next_start)
         except Exception as e:
             error(f"Exception in running twitter summary generation: {e}")
             time.sleep(60)

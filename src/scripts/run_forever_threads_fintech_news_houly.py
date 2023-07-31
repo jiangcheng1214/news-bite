@@ -118,6 +118,8 @@ if __name__ == "__main__":
             hour = current_start_time.hour
             next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
                                     ).replace(minute=0, second=0, microsecond=0)
+            next_hour_start_ts = next_hour_start_time.timestamp()
+
             if hour % post_hour_interval == 0:
                 run()
             sec_until_next_start = (

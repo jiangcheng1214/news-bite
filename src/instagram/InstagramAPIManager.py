@@ -342,9 +342,9 @@ class InstagramAPIManager:
             u for u in search_users_result if not u.is_private]
         return non_private_users
 
-    def get_follower_ids(self, user_name, ammount=200) -> Dict:
+    def get_follower_ids(self, user_name, amount=200) -> Dict:
         user_id = self.client.user_id_from_username(user_name)
-        followers = self.client.user_followers(user_id, amount=ammount)
+        followers = self.client.user_followers(user_id, amount=amount)
         return followers
 
     def reach_out_to_influencers(self, seed_query, limit=10):

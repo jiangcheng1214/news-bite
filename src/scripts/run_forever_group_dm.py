@@ -53,7 +53,7 @@ def maintain_todo_dm_user_pool(target=dm_pool_size_target):
             continue
         try:
             seed_influencers = apiManager.get_non_private_influencers(
-                seed_query='crypto')
+                seed_query='crypto news')
         except Exception as e:
             error(
                 f"Exception in getting seed influencers for account {apiManager.username}: {e}")
@@ -63,10 +63,10 @@ def maintain_todo_dm_user_pool(target=dm_pool_size_target):
                 todo_dm_user_ids_from_current_session = set()
                 if influencer.pk in visited_influencer_ids:
                     continue
-                # candidate_user_ids = apiManager.get_follower_ids(
-                #     influencer.username)
-                candidate_user_ids = apiManager.get_commenter_user_ids(
-                    influencer.pk)
+                candidate_user_ids = apiManager.get_follower_ids(
+                    influencer.username)
+                # candidate_user_ids = apiManager.get_commenter_user_ids(
+                #     influencer.pk)
                 if len(candidate_user_ids) == 0:
                     error(
                         f"0 followers for influencer {influencer.username}")
@@ -192,18 +192,18 @@ if __name__ == "__main__":
     while True:
         try:
             current_start_time = datetime.datetime.now()
-
             hour = current_start_time.hour
             next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
                                     ).replace(minute=0, second=0, microsecond=0)
             next_hour_start_ts = next_hour_start_time.timestamp()
+
             maintain_todo_dm_user_pool()
             if hour % 4 == 0:
                 group_dm()
             current_ts = datetime.datetime.now().timestamp()
-            sec_until_next_start = next_hour_start_ts - current_ts
+            sec_until_next_start = max(next_hour_start_ts - current_ts, 0)
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
             time.sleep(sec_until_next_start)
         except Exception as e:
             error(f"Exception in sending dm: {e}")
-            time.sleep(300)
+            time.sleep(60)
