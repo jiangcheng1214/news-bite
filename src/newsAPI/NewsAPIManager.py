@@ -1,3 +1,4 @@
+import time
 from dateutil import parser
 import requests
 from utils.Logging import info, warn, error
@@ -101,6 +102,44 @@ class NewsAPIManager():
         info(
             f"NewsAPIManager({self.news_api_type}): get_general_news: {len(news_list)} news returned.")
         return news_list
+
+    def get_recent_general_news(self, past_hour_limit, no_video=False) -> List[GeneralNews]:
+        news_list = self.get_general_news()
+        recent_news_list = []
+        for news in news_list:
+            try:
+                if news.timestamp < int(time.time()) - 3600 * past_hour_limit:
+                    continue
+                recent_news_list.append(news)
+            except Exception as e:
+                error(f"Exception in getting general news: {e}\n{news}")
+                continue
+        if no_video:
+            recent_news_list = [
+                x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
+        recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
+        recent_news_list.sort(key=lambda x: x.type, reverse=True)
+        info(f"Recent general news count: {len(recent_news_list)}")
+        return recent_news_list
+    
+    def get_recent_tickers_news(self, past_hour_limit, no_video=False) -> List[GeneralNews]:
+        news_list = self.get_tickers_news()
+        recent_news_list = []
+        for news in news_list:
+            try:
+                if news.timestamp < int(time.time()) - 3600 * past_hour_limit:
+                    continue
+                recent_news_list.append(news)
+            except Exception as e:
+                error(f"Exception in getting ticker news: {e}\n{news}")
+                continue
+        if no_video:
+            recent_news_list = [
+                x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
+        recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
+        recent_news_list.sort(key=lambda x: x.type, reverse=True)
+        info(f"Recent ticker news count: {len(recent_news_list)}")
+        return recent_news_list
 
     # Stock api only
     def get_tickers_news(self):

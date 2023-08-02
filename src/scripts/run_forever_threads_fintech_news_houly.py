@@ -1,68 +1,26 @@
 import datetime
-from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManagerAccountType
+from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManagerAccountType, get_next_proxy
 from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
 from threadsMeta.ThreadsAPIManager import ThreadsAPIManager, ThreadsAPIManagerAccountType
 from newsAPI.NewsAPIItem import NewsAPIItem
 from utils.Logging import info, error
+from utils.Constants import INS_POST_INTERVAL_HOUR
 import time
-from typing import List
 
-post_hour_interval = 3
-
-fintechNewsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeFintech)
+newsAPIManager = NewsAPIManager(NewsAPIType.NewsAPITypeFintech)
 langChainAPIManager = LangChainAPIManager()
 threadsAPIManager = ThreadsAPIManager(
     ThreadsAPIManagerAccountType.ThreadsAPIManagerAccountTypeFintech)
 instagramAPIManager = InstagramAPIManager(
     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech)
 
-
-def get_recent_general_news(no_video=False) -> List[GeneralNews]:
-    news_list = fintechNewsAPIManager.get_general_news()
-    recent_news_list = []
-    for news in news_list:
-        try:
-            if news.timestamp < int(time.time()) - 3600 * post_hour_interval:
-                continue
-            recent_news_list.append(news)
-        except Exception as e:
-            error(f"Exception in getting general news: {e}\n{news}")
-            continue
-    if no_video:
-        recent_news_list = [
-            x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
-    recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
-    recent_news_list.sort(key=lambda x: x.type, reverse=True)
-    info(f"Recent general news count: {len(recent_news_list)}")
-    return recent_news_list
-
-
-def get_recent_tickers_news(no_video=False) -> List[GeneralNews]:
-    news_list = fintechNewsAPIManager.get_tickers_news()
-    recent_news_list = []
-    for news in news_list:
-        try:
-            if news.timestamp < int(time.time()) - 3600 * post_hour_interval:
-                continue
-            recent_news_list.append(news)
-        except Exception as e:
-            error(f"Exception in getting ticker news: {e}\n{news}")
-            continue
-    if no_video:
-        recent_news_list = [
-            x for x in recent_news_list if x.type != GeneralNewsType.Video.value]
-    recent_news_list.sort(key=lambda x: x.rank_score, reverse=True)
-    recent_news_list.sort(key=lambda x: x.type, reverse=True)
-    info(f"Recent ticker news count: {len(recent_news_list)}")
-    return recent_news_list
-
-
 def run():
-    no_video = True
-    ticker_news_list = get_recent_tickers_news(no_video)[:10]
+    ticker_news_list = newsAPIManager.get_recent_tickers_news(
+        INS_POST_INTERVAL_HOUR, no_video=True)[:10]
     ticker_news_post_candidate_list = []
-    general_news_list = get_recent_general_news(no_video)[:10]
+    general_news_list = newsAPIManager.get_recent_general_news(
+        INS_POST_INTERVAL_HOUR, no_video=True)[:10]
     general_news_post_candidate_list = []
     for n in ticker_news_list + general_news_list:
         candidate_dict = langChainAPIManager.generate_tweet_dict(
@@ -85,30 +43,42 @@ def run():
             general_news_post_candidate_list.append(candidate)
     info(
         f"[Stock] Ticker news candidate Ticker News({len(ticker_news_post_candidate_list)}) General News({len(general_news_post_candidate_list)})")
+
+    general_news_candidates = instagramAPIManager.generate_publish_candidates(
+        general_news_post_candidate_list)
+    ticker_news_candidates = instagramAPIManager.generate_publish_candidates(
+        ticker_news_post_candidate_list)
+
+    # post instagram with retry
+    for i in range(3):
+        try:
+            instagramAPIManager.publish_image_post(
+                general_news_candidates, publish_limit=1)
+            instagramAPIManager.publish_image_story(
+                general_news_candidates, publish_limit=1)
+            instagramAPIManager.publish_image_post(
+                ticker_news_candidates, publish_limit=1)
+            instagramAPIManager.publish_image_story(
+                ticker_news_candidates, publish_limit=1)
+            break
+        except Exception as e:
+            if 'login_required' in str(e):
+                error("Instagram login required during posting image")
+                instagramAPIManager.login_user()
+            if 'Please wait a few minutes before you try again' in str(e):
+                error("ip was possibly banned by instagram. Try login with proxy")
+                proxy = get_next_proxy()
+                instagramAPIManager.login_user(proxy=proxy)
+
+    # comment related posts
+    comment_text_with_news_content = general_news_post_candidate_list[0].news_content
+    instagramAPIManager.comment_media_from_searched_users(
+        'stock trading', comment_text_with_news_content)
+    # post threads
     threadsAPIManager.post_threads(
         general_news_post_candidate_list, post_limit=2)
     threadsAPIManager.post_threads(
         ticker_news_post_candidate_list, post_limit=4)
-
-    try:
-        general_news_candidates = instagramAPIManager.generate_publish_candidates(
-            general_news_post_candidate_list)
-        instagramAPIManager.publish_image_post(general_news_candidates, publish_limit=1)
-        instagramAPIManager.publish_image_story(general_news_candidates, publish_limit=1)
-        ticker_news_candidates = instagramAPIManager.generate_publish_candidates(
-            ticker_news_post_candidate_list)
-        instagramAPIManager.publish_image_post(ticker_news_candidates, publish_limit=1)
-        instagramAPIManager.publish_image_story(ticker_news_candidates, publish_limit=1)
-    except Exception as e:
-        if 'login_required' in str(e):
-            error("Instagram login required during posting image")
-            instagramAPIManager.login_user()
-    try:
-        instagramAPIManager.comment_media_from_searched_users('investment')
-    except Exception as e:
-        if 'login_required' in str(e):
-            error("Instagram login required during liking and commenting")
-            instagramAPIManager.login_user()
 
 
 if __name__ == "__main__":
@@ -119,13 +89,22 @@ if __name__ == "__main__":
             next_hour_start_time = (current_start_time + datetime.timedelta(hours=1)
                                     ).replace(minute=0, second=0, microsecond=0)
             next_hour_start_ts = next_hour_start_time.timestamp()
-
-            if hour % post_hour_interval == 0:
-                run()
+            if hour % INS_POST_INTERVAL_HOUR == 0:
+                try:
+                    run()
+                except Exception as e:
+                    if 'login_required' in str(e):
+                        error("Instagram login required during run() function")
+                        instagramAPIManager.login_user()
+                    if 'Please wait a few minutes before you try again' in str(e):
+                        error("ip was possibly banned by instagram. login with proxy")
+                        proxy = get_next_proxy()
+                        instagramAPIManager.login_user(proxy=proxy)
+                        # we don't retry run() function here
             sec_until_next_start = (
                 next_hour_start_time - datetime.datetime.now()).seconds
             info(f"Seconds until the next hour starts: {sec_until_next_start}")
             time.sleep(sec_until_next_start+5)
         except Exception as e:
-            error(f"Exception in running twitter summary generation: {e}")
+            error(f"Exception in posting for fintech: {e}")
             time.sleep(60)

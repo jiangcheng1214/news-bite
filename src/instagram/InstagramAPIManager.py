@@ -1,9 +1,10 @@
+import requests
 import json
 import random
 import time
 from instagram.InstagramPostCandidate import InstagramPostCandidate
 from newsAPI.NewsAPIItem import NewsAPIItem
-from utils.Constants import PAST_DM_USER_IDS_REDIS_KEY_CRYPTO, PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO, TODO_DM_USER_IDS_REDIS_KEY_CRYPTO
+from utils.Constants import DM_IG_ACCOUNT_INDEX, DM_IG_ACCOUNTS, PAST_DM_USER_IDS_REDIS_KEY_CRYPTO, PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO, TODO_DM_USER_IDS_REDIS_KEY_CRYPTO
 from utils.RedisClient import RedisClient
 from instagrapi.types import StoryHashtag, StoryLink, StoryMention
 from utils.Logging import error, info, warn
@@ -65,7 +66,7 @@ def record_visited_influencer_id(accountType: InstagramAPIManagerAccountType, in
                              json.dumps(past_visited_influencer_ids), ex=60*60*24*7)
 
 
-def get_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
+def get_existing_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
     assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
     todo_dm_user_ids_str = RedisClient.shared().get(
         TODO_DM_USER_IDS_REDIS_KEY_CRYPTO)
@@ -82,8 +83,37 @@ def set_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: 
                              json.dumps(list(user_ids)), ex=60*60*24*7)
 
 
+def get_next_dm_ig_account():
+    dm_ig_account_index = int(
+        RedisClient.shared().get(DM_IG_ACCOUNT_INDEX) or 0)
+    dm_ig_accounts_str = RedisClient.shared().get(DM_IG_ACCOUNTS)
+    if dm_ig_accounts_str:
+        dm_ig_accounts = json.loads(dm_ig_accounts_str)
+    else:
+        return ["", ""]
+    dm_ig_account_index %= len(dm_ig_accounts)
+    dm_ig_account = dm_ig_accounts[dm_ig_account_index]
+    dm_ig_account_index += 1
+    RedisClient.shared().set(DM_IG_ACCOUNT_INDEX, dm_ig_account_index)
+    return dm_ig_account
+
+
+def get_next_proxy():
+    proxy_list_str = RedisClient.shared().get('proxy_ips')
+    proxy = None
+    if proxy_list_str:
+        proxy_index = int(RedisClient.shared().get('proxy_index'))
+        proxy_list = json.loads(proxy_list_str)
+        proxy = proxy_list[proxy_index]
+        proxy_index += 1
+        proxy_index %= len(proxy_list)
+        RedisClient.shared().set('proxy_index', proxy_index)
+        proxy = proxy
+    return proxy
+
+
 class InstagramAPIManager:
-    def __init__(self, accountType: InstagramAPIManagerAccountType, username=None, password=None, force_login=False):
+    def __init__(self, accountType: InstagramAPIManagerAccountType, username=None, password=None, force_login=False, proxy=None):
         self.accountType = accountType
         self.posterGenerator = PosterGenerator()
         self.client = Client()
@@ -110,9 +140,17 @@ class InstagramAPIManager:
                 __file__), '..', '..', 'cache', f'instagram_session_{self.username}.json')
             self.hashtag_appending = ''
             self.comment_text_suffix = ''
-        self.login_user(force_login=force_login)
+            if not proxy:
+                proxy = get_next_proxy()
+        login_success = self.login_user(force_login=force_login, proxy=proxy)
+        if not login_success and not proxy:
+            error("Login failed, try again with proxy")
+            proxy = get_next_proxy()
+            self.login_user(force_login=force_login, proxy=proxy)
 
-    def login_user(self, force_login=False):
+    def login_user(self, force_login=False, proxy=None):
+        info(
+            f"Logging in user: {self.username}. force_login: {force_login}. proxy: {proxy}")
         username, password = self.username, self.password
         session = None
         if not force_login:
@@ -140,6 +178,8 @@ class InstagramAPIManager:
 
         if not login_via_session:
             try:
+                if proxy:
+                    self.client.set_proxy(proxy)
                 info(
                     f'Attempting to login via username and password. username: {username}')
                 if self.client.login(username, password):
@@ -149,8 +189,11 @@ class InstagramAPIManager:
                 info("Couldn't login user using username and password: %s" % e)
 
         if not login_via_pw and not login_via_session:
-            raise Exception(
+            error(
                 "Couldn't login user with either password or session")
+            return False
+        else:
+            return True
 
     def generate_poster(self, text, image_url, sentiment):
         timestamp = int(time.time())
@@ -249,21 +292,35 @@ class InstagramAPIManager:
         for candidate in publish_candidates:
             if candidate.story_image_path is None:
                 continue
+            posted_with_link = False
             try:
-                # links = [StoryLink(webUri=candidate.news_url)]
-                links = []
+                links = [StoryLink(webUri=candidate.news_url)]
                 self.client.photo_upload_to_story(
                     candidate.story_image_path, links=links)
                 published_story_count += 1
+                posted_with_link = True
             except Exception as e:
                 if 'feedback_required: We restrict certain activity to protect our community' in str(e):
                     info(
                         f"Published instagram story: {candidate.story_image_path}")
-                    publish_count += 1
+                    published_story_count += 1
                 error(f"Exception in publishing instagram story: {e}")
-            finally:
-                if published_story_count >= publish_limit:
-                    break
+            if not posted_with_link:
+                try:
+                    error(
+                        f"Posting instagram story without link failed: {candidate.story_image_path}, url: {candidate.news_url}. Post without link instead.")
+                    self.client.photo_upload_to_story(
+                        candidate.story_image_path)
+                    published_story_count += 1
+                except Exception as e:
+                    if 'feedback_required: We restrict certain activity to protect our community' in str(e):
+                        info(
+                            f"Published instagram story: {candidate.story_image_path}")
+                        published_story_count += 1
+                    error(f"Exception in publishing instagram story: {e}")
+                    raise e
+            if published_story_count >= publish_limit:
+                break
 
     def get_most_similar_posted_ins_and_similarity_score(self, content: str):
         user_id = self.client.user_id
@@ -389,10 +446,30 @@ class InstagramAPIManager:
 
 
 if __name__ == "__main__":
-    apiManager = InstagramAPIManager(
-        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'ee7ga3qr', 'm3mrcWmw')
-    apiManager.publish_image_story(
-        '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', 'crypto_news_pulse')
+    res = requests.get("https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25", headers={
+        "Authorization": "Token 466325df764dcb62939398699aa93d167d15fbd6"}).text
+    list = json.loads(res)
+    ips = []
+    for result in list['results']:
+        ip = f"{result['proxy_address']}:{str(result['port'])}"
+        ips.append(ip)
+    print(ips)
+    ip = requests.get(
+        "https://ipv4.webshare.io/",
+        proxies={
+            "http": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/",
+            "https": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/"
+        }
+    ).text
+    print(ip)
+    # apiManager = InstagramAPIManager(
+    #     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'd2yo3eg26w', 'ILZK7z8n', proxy=f'{ip}:80')
+    # apiManager.publish_image_story(
+    #     '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', 'crypto_news_pulse')
+    # links = [StoryLink(
+    #     webUri='https://ambcrypto.com/how-azukis-attempt-at-recouping-plunged-prices-instead')]
+    # apiManager.client.photo_upload_to_story(
+    #     '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', links=links)
 
     # id1 = apiManager.client.user_id_from_username('jaycee.1214')
     # id2 = apiManager.client.user_id_from_username('crypto_news_pulse')
