@@ -239,7 +239,8 @@ class InstagramAPIManager:
             hashtag_string = ' '.join(hashtag_list).strip()
             if content.endswith(hashtag_string):
                 content = content[:-len(hashtag_string)].strip()
-            content_with_hashtags = f"{content}\n{hashtag_string}\n{self.hashtag_appending}"
+            hashtag_string = f"{hashtag_string} {self.hashtag_appending}"
+            content_with_hashtags = f"{content}\n{hashtag_string}"
             most_similar_post, most_similar_post_similarity_score = self.get_most_similar_posted_ins_and_similarity_score(
                 content)
             if most_similar_post_similarity_score > 0.9:
@@ -250,6 +251,8 @@ class InstagramAPIManager:
                 content, image_url, newsItem.sentiment)
 
             postCandidate = InstagramPostCandidate({
+                "content": content,
+                "hashtags_str": hashtag_string,
                 "content_with_hashtags": content_with_hashtags,
                 "post_image_path": post_image_path,
                 "story_image_path": story_image_path,
@@ -266,11 +269,13 @@ class InstagramAPIManager:
             if candidate.post_image_path is None:
                 continue
             try:
-                self.client.photo_upload(
+                enriched_content = f"{candidate.content}\n{candidate.hashtags_str}"
+                publish_result = self.client.photo_upload(
                     candidate.post_image_path,
-                    candidate.content_with_hashtags
+                    enriched_content
                 )
-                info(f"published instagram image: {candidate.post_image_path}")
+                info(
+                    f"published instagram image: {candidate.post_image_path}. publish_result: {publish_result}")
                 publish_count += 1
             except Exception as e:
                 if 'feedback_required: We restrict certain activity to protect our community' in str(e):
@@ -285,7 +290,7 @@ class InstagramAPIManager:
 
     def publish_image_story(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
         my_stories = self.client.user_stories(self.client.user_id)
-        if len(my_stories) >= 3:
+        if len(my_stories) >= 4:
             info("Skip publishing image story since there are already 2 stories")
             return
         published_story_count = 0
@@ -329,11 +334,17 @@ class InstagramAPIManager:
         medias = self.client.user_medias(user_id, amount=20)
         for media in medias:
             caption_text = media.caption_text
-            similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
-                content, caption_text)
-            if similarity > most_similar_post_similarity_score:
-                most_similar_post_similarity_score = similarity
-                most_similar_post = caption_text
+            if caption_text is None or len(caption_text) < 10:
+                continue
+            try:
+                similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
+                    content, caption_text)
+                if similarity > most_similar_post_similarity_score:
+                    most_similar_post_similarity_score = similarity
+                    most_similar_post = caption_text
+            except Exception as e:
+                error(
+                    f"Exception in getting similarity score between media({media.pk}). caption_text: {caption_text} and content: {content}. Error:{e}.")
         return most_similar_post, most_similar_post_similarity_score
 
     def comment_media_from_searched_users(self, seed_search_query, comment_text, like_limit=20):

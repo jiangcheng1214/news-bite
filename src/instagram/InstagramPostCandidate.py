@@ -1,5 +1,7 @@
 class InstagramPostCandidate:
     def __init__(self, initial_dict: dict):
+        self.content = initial_dict.get("content")
+        self.hashtags_str = initial_dict.get("hashtags_str")
         self.content_with_hashtags = initial_dict.get("content_with_hashtags")
         self.post_image_path = initial_dict.get("post_image_path")
         self.story_image_path = initial_dict.get("story_image_path")
@@ -9,6 +11,8 @@ class InstagramPostCandidate:
 
     def __repr__(self):
         return {
+            "content": self.content,
+            "hashtags_str": self.hashtags_str,
             "content_with_hashtags": self.content_with_hashtags,
             "post_image_path": self.post_image_path,
             "story_image_path": self.story_image_path,

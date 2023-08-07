@@ -1,6 +1,6 @@
 import datetime
 from instagram.InstagramAPIManager import InstagramAPIManager, InstagramAPIManagerAccountType, get_next_proxy
-from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, GeneralNews, NewsAPIType
+from newsAPI.NewsAPIManager import GeneralNewsType, NewsAPIManager, NewsAPIType
 from langChain.LangChainAPIManager import LangChainAPIManager
 from posterGeneration.PosterGenerator import PosterGenerator
 from threadsMeta.ThreadsAPIManager import ThreadsAPIManager, ThreadsAPIManagerAccountType
@@ -47,9 +47,9 @@ def run():
     for i in range(3):
         try:
             instagramAPIManager.publish_image_post(
-                publish_candidates, publish_limit=2)
+                publish_candidates, publish_limit=1)
             instagramAPIManager.publish_image_story(
-                publish_candidates, publish_limit=2)
+                publish_candidates, publish_limit=1)
             break
         except Exception as e:
             if 'login_required' in str(e):

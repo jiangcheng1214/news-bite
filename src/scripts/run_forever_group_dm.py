@@ -90,7 +90,7 @@ def maintain_todo_dm_user_pool():
             continue
         try:
             seed_influencers = apiManager.get_non_private_influencers(
-                seed_query='crypto trading')
+                seed_query='trading')
         except Exception as e:
             error(
                 f"Exception in getting seed influencers for account {apiManager.username}: {e}")
@@ -102,10 +102,10 @@ def maintain_todo_dm_user_pool():
                 todo_dm_user_ids_from_current_session = set()
                 if influencer.pk in visited_influencer_ids:
                     continue
-                candidate_user_ids = apiManager.get_follower_ids(
-                    influencer.username)
-                # candidate_user_ids = apiManager.get_commenter_user_ids(
-                #     influencer.pk)
+                # candidate_user_ids = apiManager.get_follower_ids(
+                #     influencer.username)
+                candidate_user_ids = apiManager.get_commenter_user_ids(
+                    influencer.pk)
                 if len(candidate_user_ids) == 0:
                     error(
                         f"0 followers for influencer {influencer.username}")
@@ -127,6 +127,8 @@ def maintain_todo_dm_user_pool():
                     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto, todo_dm_user_ids)
                 info(
                     f"users pool size (before: ${base_pool_size}) / (delta: ${delta_pool_size}) / (current: ${current_pool_size}) / (target: {dm_pool_size_target}) influencer: {influencer.username}")
+                if len(todo_dm_user_ids) >= dm_pool_size_target:
+                    break
             if total_news_dm_user_count == 0:
                 consecitive_zero_count += 1
             else:
@@ -162,19 +164,16 @@ def group_dm():
                 f"Exception in creating InstagramAPIManager for account {un}: {e}")
             continue
         thread_id = None
-        attempt = 0
-        while thread_id is None:
-            attempt += 1
+        for _ in range(0, 2): # 0, 1
             try:
                 next_user_id = todo_dm_user_ids_list.pop()
                 dm_msg_result = apiManager.client.direct_send(
                     '.', [my_user_id, next_user_id])
                 thread_id = dm_msg_result.thread_id
+                break
             except Exception as e:
                 error(
                     f"Exception in creating thread for account {un} user_id: {next_user_id}: {e}")
-                if attempt > 3:
-                    break
         if thread_id is None:
             error(
                 f"Failed to create thread for account {un} user_id: {next_user_id}")
@@ -182,7 +181,7 @@ def group_dm():
         users_in_this_group = [my_user_id, next_user_id]
         failed_to_add_user_count = 0
         consequtive_failure = 0
-        while len(todo_dm_user_ids_list) > 0 and len(users_in_this_group) < users_to_invite_per_group and consequtive_failure < 5:
+        while len(todo_dm_user_ids_list) > 0 and len(users_in_this_group) < users_to_invite_per_group and consequtive_failure < 10:
             try:
                 next_user_id = todo_dm_user_ids_list.pop()
                 success = apiManager.client.add_users_to_direct_thread(
@@ -199,31 +198,32 @@ def group_dm():
                 failed_to_add_user_count += 1
                 consequtive_failure += 1
                 continue
-        if len(users_in_this_group) < 5:
+        if len(users_in_this_group) < 3:
             error(
                 f"Failed to add enough users to group for account {un}")
-        info(
-            f"DMing from {un} to {len(users_in_this_group)} users, index: {i}")
-        try:
-            # msg = '🔥 Crypto Currency Breaking News Updates 🔥\n🔥 BUY / SELL Signals Sharing 🔥\n\n>>> @crypto_news_pulse <<< Follow and be $RICH!!'
-            msg = "📈 Do you want to catch secrets behind Bitcoin price movements?\n💡 Do you need real-time expert BUY / SELL signals?\n🧠 Do you need to keep fresh with crypto breaking news?\n Follow and we've got you back >>> @crypto_news_pulse <<<"
-            dm_msg_result = apiManager.client.direct_send(
-                msg, thread_ids=[thread_id])
-            info(f"DM result: {dm_msg_result}")
+        else:
             info(
-                f"DMed from {un} to {len(users_in_this_group)} users, index: {i}, failed to add user count: {failed_to_add_user_count}")
-            total_user_dm_reached += len(users_in_this_group)
-        except Exception as e:
-            error(
-                f"Exception in DMing: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
-        try:
-            profile_share = apiManager.client.direct_profile_share(
-                user_id=crypto_user_id, thread_ids=[thread_id])
-            info(f"DM profile share result: {profile_share}")
-        except Exception as e:
-            error(
-                f"Exception in DMing profile share: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
-        success_account += 1
+                f"DMing from {un} to {len(users_in_this_group)} users, index: {i}")
+            try:
+                # msg = '🔥 Crypto Currency Breaking News Updates 🔥\n🔥 BUY / SELL Signals Sharing 🔥\n\n>>> @crypto_news_pulse <<< Follow and be $RICH!!'
+                msg = "📈 Do you want to catch secrets behind Bitcoin price movements?\n💡 Do you need real-time expert BUY / SELL signals?\n🧠 Do you need to keep fresh with crypto breaking news?\n Follow and we've got you back >>> @crypto_news_pulse <<<"
+                dm_msg_result = apiManager.client.direct_send(
+                    msg, thread_ids=[thread_id])
+                info(f"DM result: {dm_msg_result}")
+                info(
+                    f"DMed from {un} to {len(users_in_this_group)} users, index: {i}, failed to add user count: {failed_to_add_user_count}")
+                total_user_dm_reached += len(users_in_this_group)
+            except Exception as e:
+                error(
+                    f"Exception in DMing: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
+            try:
+                profile_share = apiManager.client.direct_profile_share(
+                    user_id=crypto_user_id, thread_ids=[thread_id])
+                info(f"DM profile share result: {profile_share}")
+            except Exception as e:
+                error(
+                    f"Exception in DMing profile share: {e}\nusername: {un}. dm user ids: {users_in_this_group}")
+            success_account += 1
         total_user_failed_to_add += failed_to_add_user_count
         time.sleep(5)
         set_todo_dm_user_ids(

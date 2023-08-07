@@ -94,3 +94,8 @@ class TextEmbeddingCache:
             info("Embedding cache cleared")
         except Exception as e:
             error(f"Failed to clear embedding cache: {e}")
+
+if __name__ == "__main__":
+    embedding = TextEmbeddingCache.get_instance().embedding_of("test")
+    print(embedding)
+    
