@@ -4,7 +4,13 @@ import random
 import time
 from instagram.InstagramPostCandidate import InstagramPostCandidate
 from newsAPI.NewsAPIItem import NewsAPIItem
-from utils.Constants import DM_IG_ACCOUNT_INDEX, DM_IG_ACCOUNTS, PAST_DM_USER_IDS_REDIS_KEY_CRYPTO, PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO, TODO_DM_USER_IDS_REDIS_KEY_CRYPTO
+from utils.Constants import (
+    DM_IG_ACCOUNT_INDEX,
+    DM_IG_ACCOUNTS,
+    PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
+    PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
+    TODO_DM_USER_IDS_REDIS_KEY_CRYPTO,
+)
 from utils.RedisClient import RedisClient
 from instagrapi.types import StoryHashtag, StoryLink, StoryMention
 from utils.Logging import error, info, warn
@@ -16,6 +22,7 @@ import os
 from dotenv import load_dotenv
 from posterGeneration.PosterGenerator import PosterGenerator
 from utils.TextEmbeddingCache import TextEmbeddingCache
+
 load_dotenv()
 
 
@@ -26,9 +33,11 @@ class InstagramAPIManagerAccountType(Enum):
 
 
 def get_past_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
-    past_dm_user_ids_str = RedisClient.shared().get(
-        PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
+    past_dm_user_ids_str = RedisClient.shared().get(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO)
     if past_dm_user_ids_str:
         past_dm_user_ids = set(json.loads(past_dm_user_ids_str))
     else:
@@ -36,40 +45,65 @@ def get_past_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str
     return past_dm_user_ids
 
 
-def record_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: List[str]):
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+def record_dm_user_ids(
+    accountType: InstagramAPIManagerAccountType, user_ids: List[str]
+):
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
     past_dm_user_ids = get_past_dm_user_ids(accountType)
     past_dm_user_ids.update(user_ids)
     past_dm_user_ids = list(past_dm_user_ids)
-    RedisClient.shared().set(PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
-                             json.dumps(past_dm_user_ids), ex=60*60*24*7)
+    RedisClient.shared().set(
+        PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
+        json.dumps(past_dm_user_ids),
+        ex=60 * 60 * 24 * 7,
+    )
 
 
-def get_past_visited_influencer_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+def get_past_visited_influencer_ids(
+    accountType: InstagramAPIManagerAccountType,
+) -> set[str]:
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
     past_visited_influencer_ids_str = RedisClient.shared().get(
-        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO)
+        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO
+    )
     if past_visited_influencer_ids_str:
-        past_visited_influencer_ids = set(
-            json.loads(past_visited_influencer_ids_str))
+        past_visited_influencer_ids = set(json.loads(past_visited_influencer_ids_str))
     else:
         past_visited_influencer_ids = set()
     return past_visited_influencer_ids
 
 
-def record_visited_influencer_id(accountType: InstagramAPIManagerAccountType, influencer_id: str):
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+def record_visited_influencer_id(
+    accountType: InstagramAPIManagerAccountType, influencer_id: str
+):
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
     past_visited_influencer_ids = get_past_visited_influencer_ids(accountType)
     past_visited_influencer_ids.add(influencer_id)
     past_visited_influencer_ids = list(past_visited_influencer_ids)
-    RedisClient.shared().set(PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
-                             json.dumps(past_visited_influencer_ids), ex=60*60*24*7)
+    RedisClient.shared().set(
+        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
+        json.dumps(past_visited_influencer_ids),
+        ex=60 * 60 * 24 * 7,
+    )
 
 
-def get_existing_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType) -> set[str]:
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
-    todo_dm_user_ids_str = RedisClient.shared().get(
-        TODO_DM_USER_IDS_REDIS_KEY_CRYPTO)
+def get_existing_todo_dm_user_ids(
+    accountType: InstagramAPIManagerAccountType,
+) -> set[str]:
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
+    todo_dm_user_ids_str = RedisClient.shared().get(TODO_DM_USER_IDS_REDIS_KEY_CRYPTO)
     if todo_dm_user_ids_str:
         todo_dm_user_ids = set(json.loads(todo_dm_user_ids_str))
     else:
@@ -77,15 +111,22 @@ def get_existing_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType) -
     return todo_dm_user_ids
 
 
-def set_todo_dm_user_ids(accountType: InstagramAPIManagerAccountType, user_ids: set[str]):
-    assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
-    RedisClient.shared().set(TODO_DM_USER_IDS_REDIS_KEY_CRYPTO,
-                             json.dumps(list(user_ids)), ex=60*60*24*7)
+def set_todo_dm_user_ids(
+    accountType: InstagramAPIManagerAccountType, user_ids: set[str]
+):
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
+    RedisClient.shared().set(
+        TODO_DM_USER_IDS_REDIS_KEY_CRYPTO,
+        json.dumps(list(user_ids)),
+        ex=60 * 60 * 24 * 7,
+    )
 
 
 def get_next_dm_ig_account():
-    dm_ig_account_index = int(
-        RedisClient.shared().get(DM_IG_ACCOUNT_INDEX) or 0)
+    dm_ig_account_index = int(RedisClient.shared().get(DM_IG_ACCOUNT_INDEX) or 0)
     dm_ig_accounts_str = RedisClient.shared().get(DM_IG_ACCOUNTS)
     if dm_ig_accounts_str:
         dm_ig_accounts = json.loads(dm_ig_accounts_str)
@@ -99,47 +140,82 @@ def get_next_dm_ig_account():
 
 
 def get_next_proxy():
-    proxy_list_str = RedisClient.shared().get('proxy_ips')
+    proxy_list_str = RedisClient.shared().get("proxy_ips")
     proxy = None
     if proxy_list_str:
-        proxy_index = int(RedisClient.shared().get('proxy_index'))
+        proxy_index = int(RedisClient.shared().get("proxy_index"))
         proxy_list = json.loads(proxy_list_str)
         proxy = proxy_list[proxy_index]
         proxy_index += 1
         proxy_index %= len(proxy_list)
-        RedisClient.shared().set('proxy_index', proxy_index)
+        RedisClient.shared().set("proxy_index", proxy_index)
         proxy = proxy
     return proxy
 
 
 class InstagramAPIManager:
-    def __init__(self, accountType: InstagramAPIManagerAccountType, username=None, password=None, force_login=False, proxy=None):
+    def __init__(
+        self,
+        accountType: InstagramAPIManagerAccountType,
+        username=None,
+        password=None,
+        force_login=False,
+        proxy=None,
+    ):
         self.accountType = accountType
         self.posterGenerator = PosterGenerator()
         self.client = Client()
         self.client.delay_range = [0.5, 1.5]
-        if accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto:
-            self.username = os.environ.get('THREADS_CRYPTO_USER_NAME')
-            self.password = os.environ.get('THREADS_CRYPTO_PASSWORD')
-            self.session_path = os.path.join(os.path.dirname(
-                __file__), '..', '..', 'cache', f'instagram_session_crypto.json')
-            self.hashtag_appending = '#crypto #cryptocurrency #btc #bitcoin #passiveincome #eth #marketsentiment #cryptonews'
-            self.comment_text_suffix = '🙌 Latest crypto updates and sentimental news. #MissNoMore 🙌'
-        elif accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech:
-            self.username = os.environ.get('THREADS_FINTECH_USER_NAME')
-            self.password = os.environ.get('THREADS_FINTECH_PASSWORD')
-            self.session_path = os.path.join(os.path.dirname(
-                __file__), '..', '..', 'cache', f'instagram_session_fintech.json')
-            self.hashtag_appending = '#financialnews #technews #quant #marketsentiment #passiveincome #stockmarket #marketindicator #fintech'
-            self.comment_text_suffix = '🙌 Latest financial / tech updates and sentimental news. #MissNoMore 🙌'
+        if (
+            accountType
+            == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+        ):
+            self.username = os.environ.get("THREADS_CRYPTO_USER_NAME")
+            self.password = os.environ.get("THREADS_CRYPTO_PASSWORD")
+            self.session_path = os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "cache",
+                f"instagram_session_crypto.json",
+            )
+            self.hashtag_appending = "#crypto #cryptocurrency #btc #bitcoin #passiveincome #eth #marketsentiment #cryptonews"
+            self.comment_text_suffix = (
+                "🙌 Latest crypto updates and sentimental news. #MissNoMore 🙌"
+            )
+        elif (
+            accountType
+            == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeFintech
+        ):
+            self.username = os.environ.get("THREADS_FINTECH_USER_NAME")
+            self.password = os.environ.get("THREADS_FINTECH_PASSWORD")
+            self.session_path = os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "cache",
+                f"instagram_session_fintech.json",
+            )
+            self.hashtag_appending = "#financialnews #technews #quant #marketsentiment #passiveincome #stockmarket #marketindicator #fintech"
+            self.comment_text_suffix = (
+                "🙌 Latest financial / tech updates and sentimental news. #MissNoMore 🙌"
+            )
         else:
-            assert accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther
+            assert (
+                accountType
+                == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther
+            )
             self.username = username
             self.password = password
-            self.session_path = os.path.join(os.path.dirname(
-                __file__), '..', '..', 'cache', f'instagram_session_{self.username}.json')
-            self.hashtag_appending = ''
-            self.comment_text_suffix = ''
+            self.session_path = os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "cache",
+                f"instagram_session_{self.username}.json",
+            )
+            self.hashtag_appending = ""
+            self.comment_text_suffix = ""
             if not proxy:
                 proxy = get_next_proxy()
         login_success = self.login_user(force_login=force_login, proxy=proxy)
@@ -150,7 +226,8 @@ class InstagramAPIManager:
 
     def login_user(self, force_login=False, proxy=None):
         info(
-            f"Logging in user: {self.username}. force_login: {force_login}. proxy: {proxy}")
+            f"Logging in user: {self.username}. force_login: {force_login}. proxy: {proxy}"
+        )
         username, password = self.username, self.password
         session = None
         if not force_login:
@@ -181,7 +258,8 @@ class InstagramAPIManager:
                 if proxy:
                     self.client.set_proxy(proxy)
                 info(
-                    f'Attempting to login via username and password. username: {username}')
+                    f"Attempting to login via username and password. username: {username}"
+                )
                 if self.client.login(username, password):
                     login_via_pw = True
                     self.client.dump_settings(self.session_path)
@@ -189,24 +267,40 @@ class InstagramAPIManager:
                 info("Couldn't login user using username and password: %s" % e)
 
         if not login_via_pw and not login_via_session:
-            error(
-                "Couldn't login user with either password or session")
+            error("Couldn't login user with either password or session")
             return False
         else:
             return True
 
     def generate_poster(self, text, image_url, sentiment):
         timestamp = int(time.time())
-        prefix = 'crypto' if self.accountType == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto else 'fintech'
-        post_image_output_path = os.path.join(os.path.dirname(
-            __file__), '..', '..', 'data', f'{prefix}_{timestamp}.jpg')
-        story_image_output_path = os.path.join(os.path.dirname(
-            __file__), '..', '..', 'data', f'{prefix}_{timestamp}_story.jpg')
+        prefix = (
+            "crypto"
+            if self.accountType
+            == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+            else "fintech"
+        )
+        post_image_output_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "data", f"{prefix}_{timestamp}.jpg"
+        )
+        story_image_output_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "data",
+            f"{prefix}_{timestamp}_story.jpg",
+        )
         try:
             info(
-                f"Generating poster for instagram post: {text} - {post_image_output_path}")
+                f"Generating poster for instagram post: {text} - {post_image_output_path}"
+            )
             self.posterGenerator.generate_instagram_poster(
-                text, image_url, sentiment, post_image_output_path, story_image_output_path)
+                text,
+                image_url,
+                sentiment,
+                post_image_output_path,
+                story_image_output_path,
+            )
             if os.path.exists(post_image_output_path):
                 if os.path.exists(story_image_output_path):
                     return post_image_output_path, story_image_output_path
@@ -218,7 +312,9 @@ class InstagramAPIManager:
             error(f"Exception in generating poster: {e}")
             return None, None
 
-    def generate_publish_candidates(self, news_items: List[NewsAPIItem]) -> List[InstagramPostCandidate]:
+    def generate_publish_candidates(
+        self, news_items: List[NewsAPIItem]
+    ) -> List[InstagramPostCandidate]:
         post_candidates = []
         for newsItem in news_items:
             content = newsItem.news_content
@@ -227,43 +323,57 @@ class InstagramAPIManager:
             if type(hashtags) == list:
                 hashtag_list = hashtags
             elif type(hashtags) == str:
-                hashtag_list = hashtags.split(',')
+                hashtag_list = hashtags.split(",")
                 clean_hashtags = []
                 for h in hashtag_list:
-                    tag = h.strip().replace('-', '').replace('.', '').replace('@', '').replace('/', '')
-                    if not tag.startswith('#'):
+                    tag = (
+                        h.strip()
+                        .replace("-", "")
+                        .replace(".", "")
+                        .replace("@", "")
+                        .replace("/", "")
+                    )
+                    if not tag.startswith("#"):
                         clean_hashtags.append(f"#{tag}")
                     else:
                         clean_hashtags.append(tag)
                 hashtag_list = clean_hashtags
-            hashtag_string = ' '.join(hashtag_list).strip()
+            hashtag_string = " ".join(hashtag_list).strip()
             if content.endswith(hashtag_string):
-                content = content[:-len(hashtag_string)].strip()
+                content = content[: -len(hashtag_string)].strip()
             hashtag_string = f"{hashtag_string} {self.hashtag_appending}"
             content_with_hashtags = f"{content}\n{hashtag_string}"
-            most_similar_post, most_similar_post_similarity_score = self.get_most_similar_posted_ins_and_similarity_score(
-                content)
+            (
+                most_similar_post,
+                most_similar_post_similarity_score,
+            ) = self.get_most_similar_posted_ins_and_similarity_score(content)
             if most_similar_post_similarity_score > 0.9:
                 info(
-                    f"Skip posting: {content}. Most similar post similarity score: {most_similar_post_similarity_score} - {most_similar_post}")
+                    f"Skip posting: {content}. Most similar post similarity score: {most_similar_post_similarity_score} - {most_similar_post}"
+                )
                 continue
             post_image_path, story_image_path = self.generate_poster(
-                content, image_url, newsItem.sentiment)
+                content, image_url, newsItem.sentiment
+            )
 
-            postCandidate = InstagramPostCandidate({
-                "content": content,
-                "hashtags_str": hashtag_string,
-                "content_with_hashtags": content_with_hashtags,
-                "post_image_path": post_image_path,
-                "story_image_path": story_image_path,
-                "rank_score": newsItem.rank_score,
-                "sentiment": newsItem.sentiment,
-                "news_url": newsItem.news_url
-            })
+            postCandidate = InstagramPostCandidate(
+                {
+                    "content": content,
+                    "hashtags_str": hashtag_string,
+                    "content_with_hashtags": content_with_hashtags,
+                    "post_image_path": post_image_path,
+                    "story_image_path": story_image_path,
+                    "rank_score": newsItem.rank_score,
+                    "sentiment": newsItem.sentiment,
+                    "news_url": newsItem.news_url,
+                }
+            )
             post_candidates.append(postCandidate)
         return post_candidates
 
-    def publish_image_post(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
+    def publish_image_post(
+        self, publish_candidates: List[InstagramPostCandidate], publish_limit=1
+    ):
         publish_count = 0
         for candidate in publish_candidates:
             if candidate.post_image_path is None:
@@ -271,16 +381,18 @@ class InstagramAPIManager:
             try:
                 enriched_content = f"{candidate.content}\n{candidate.hashtags_str}"
                 publish_result = self.client.photo_upload(
-                    candidate.post_image_path,
-                    enriched_content
+                    candidate.post_image_path, enriched_content
                 )
                 info(
-                    f"published instagram image: {candidate.post_image_path}. publish_result: {publish_result}")
+                    f"published instagram image: {candidate.post_image_path}. publish_result: {publish_result}"
+                )
                 publish_count += 1
             except Exception as e:
-                if 'feedback_required: We restrict certain activity to protect our community' in str(e):
-                    info(
-                        f"Published instagram image: {candidate.post_image_path}")
+                if (
+                    "feedback_required: We restrict certain activity to protect our community"
+                    in str(e)
+                ):
+                    info(f"Published instagram image: {candidate.post_image_path}")
                     publish_count += 1
                 else:
                     error(f"Exception in posting instagram image: {e}")
@@ -288,7 +400,9 @@ class InstagramAPIManager:
                 if publish_count >= publish_limit:
                     break
 
-    def publish_image_story(self, publish_candidates: List[InstagramPostCandidate], publish_limit=1):
+    def publish_image_story(
+        self, publish_candidates: List[InstagramPostCandidate], publish_limit=1
+    ):
         my_stories = self.client.user_stories(self.client.user_id)
         if len(my_stories) >= 4:
             info("Skip publishing image story since there are already 2 stories")
@@ -301,26 +415,31 @@ class InstagramAPIManager:
             try:
                 links = [StoryLink(webUri=candidate.news_url)]
                 self.client.photo_upload_to_story(
-                    candidate.story_image_path, links=links)
+                    candidate.story_image_path, links=links
+                )
                 published_story_count += 1
                 posted_with_link = True
             except Exception as e:
-                if 'feedback_required: We restrict certain activity to protect our community' in str(e):
-                    info(
-                        f"Published instagram story: {candidate.story_image_path}")
+                if (
+                    "feedback_required: We restrict certain activity to protect our community"
+                    in str(e)
+                ):
+                    info(f"Published instagram story: {candidate.story_image_path}")
                     published_story_count += 1
                 error(f"Exception in publishing instagram story: {e}")
             if not posted_with_link:
                 try:
                     error(
-                        f"Posting instagram story without link failed: {candidate.story_image_path}, url: {candidate.news_url}. Post without link instead.")
-                    self.client.photo_upload_to_story(
-                        candidate.story_image_path)
+                        f"Posting instagram story without link failed: {candidate.story_image_path}, url: {candidate.news_url}. Post without link instead."
+                    )
+                    self.client.photo_upload_to_story(candidate.story_image_path)
                     published_story_count += 1
                 except Exception as e:
-                    if 'feedback_required: We restrict certain activity to protect our community' in str(e):
-                        info(
-                            f"Published instagram story: {candidate.story_image_path}")
+                    if (
+                        "feedback_required: We restrict certain activity to protect our community"
+                        in str(e)
+                    ):
+                        info(f"Published instagram story: {candidate.story_image_path}")
                         published_story_count += 1
                     error(f"Exception in publishing instagram story: {e}")
                     raise e
@@ -337,64 +456,76 @@ class InstagramAPIManager:
             if caption_text is None or len(caption_text) < 10:
                 continue
             try:
-                similarity = TextEmbeddingCache.get_instance().get_text_similarity_score(
-                    content, caption_text)
+                similarity = (
+                    TextEmbeddingCache.get_instance().get_text_similarity_score(
+                        content, caption_text
+                    )
+                )
                 if similarity > most_similar_post_similarity_score:
                     most_similar_post_similarity_score = similarity
                     most_similar_post = caption_text
             except Exception as e:
                 error(
-                    f"Exception in getting similarity score between media({media.pk}). caption_text: {caption_text} and content: {content}. Error:{e}.")
+                    f"Exception in getting similarity score between media({media.pk}). caption_text: {caption_text} and content: {content}. Error:{e}."
+                )
         return most_similar_post, most_similar_post_similarity_score
 
-    def comment_media_from_searched_users(self, seed_search_query, comment_text, like_limit=20):
+    def comment_media_from_searched_users(
+        self, seed_search_query, comment_text, like_limit=20
+    ):
         matched_users = self.client.search_users(
-            seed_search_query)  # normally 20 will be returned
-        info(
-            f"Matched users: {len(matched_users)} for query: {seed_search_query}")
+            seed_search_query
+        )  # normally 20 will be returned
+        info(f"Matched users: {len(matched_users)} for query: {seed_search_query}")
         total_users_to_reach = 10
         total_posts_to_comment_per_user = 2
         total_users_reached = 0
         total_posts_commented = 0
         for user in matched_users:
             recent_posts = self.client.user_medias(
-                user.pk, amount=total_posts_to_comment_per_user)
+                user.pk, amount=total_posts_to_comment_per_user
+            )
             info(
-                f"  Recent posts: {len(recent_posts)} for user: {user.username}({user.pk})")
+                f"  Recent posts: {len(recent_posts)} for user: {user.username}({user.pk})"
+            )
             total_posts_commented_for_current_user = 0
             for post in recent_posts:
                 try:
                     self.client.media_like(post.pk)
                     info(
-                        f'Liked post: {post.caption_text} from user: {user.username}({user.pk})')
+                        f"Liked post: {post.caption_text} from user: {user.username}({user.pk})"
+                    )
                     time.sleep(random.randint(10, 12))
-                    post_caption_text = post.caption_text.replace(
-                        '\n', ' ').strip()
+                    post_caption_text = post.caption_text.replace("\n", " ").strip()
                     conmment_content = f"🔥 Breaking News Just In 🔥 - {comment_text}\n{self.comment_text_suffix}"
                     self.client.media_comment(post.pk, conmment_content)
                     time.sleep(random.randint(10, 12))
                     total_posts_commented_for_current_user += 1
                     total_posts_commented += 1
                     info(
-                        f'Commented post: {post_caption_text} from user: {user.username}({user.pk}) current user total posts commented: {total_posts_commented_for_current_user}, total posts commented: {total_posts_commented}')
+                        f"Commented post: {post_caption_text} from user: {user.username}({user.pk}) current user total posts commented: {total_posts_commented_for_current_user}, total posts commented: {total_posts_commented}"
+                    )
                 except Exception as e:
                     error(f"Exception during commenting post: {e}")
-                    if 'login_required' in str(e):
+                    if "login_required" in str(e):
                         error("Instagram login required during liking and commenting")
                         self.login_user()
-                if total_posts_commented_for_current_user >= total_posts_to_comment_per_user:
+                if (
+                    total_posts_commented_for_current_user
+                    >= total_posts_to_comment_per_user
+                ):
                     break
             total_users_reached += 1
             info(
-                f"Finished commenting on user: {user.username}({user.pk}). total users reached: {total_users_reached}. total posts commented: {total_posts_commented}")
+                f"Finished commenting on user: {user.username}({user.pk}). total users reached: {total_users_reached}. total posts commented: {total_posts_commented}"
+            )
             if total_users_reached >= total_users_to_reach:
                 break
         info(f"Total comment reached: {total_posts_commented}")
 
     def get_commenter_user_ids(self, poster_user_id) -> set[str]:
         post_amount = 20
-        user_medias = self.client.user_medias(
-            poster_user_id, amount=post_amount)
+        user_medias = self.client.user_medias(poster_user_id, amount=post_amount)
         commenter_ids = set()
         for media in user_medias:
             comments = self.client.media_comments(media.pk)
@@ -404,10 +535,8 @@ class InstagramAPIManager:
         return commenter_ids
 
     def get_non_private_influencers(self, seed_query) -> List:
-        search_users_result = self.client.search_users_v1(
-            seed_query, count=200)
-        non_private_users = [
-            u for u in search_users_result if not u.is_private]
+        search_users_result = self.client.search_users_v1(seed_query, count=200)
+        non_private_users = [u for u in search_users_result if not u.is_private]
         return non_private_users
 
     def get_follower_ids(self, user_name, amount=200) -> Dict:
@@ -422,13 +551,13 @@ class InstagramAPIManager:
         for user in non_private_users:
             dm_sent = False
             try:
-                self.client.direct_send('TESTING MESSAGE!', [user.pk])
+                self.client.direct_send("TESTING MESSAGE!", [user.pk])
                 info(f"Sent DM to user: {user.username}({user.pk})")
                 total_users_reached += 1
                 dm_sent = True
             except Exception as e:
                 error(f"Exception in sending DM to user: {e}")
-                if 'login_required' in str(e):
+                if "login_required" in str(e):
                     error("Instagram login required during sending DM")
                     self.login_user()
             if not dm_sent:
@@ -441,40 +570,45 @@ class InstagramAPIManager:
                     conmment_content = f"🔥 test comment 🔥"
                     self.client.media_comment(post.pk, conmment_content)
                     time.sleep(random.randint(10, 12))
-                    info(
-                        f'Commented DM reminder for user: {user.username}({user.pk})')
+                    info(f"Commented DM reminder for user: {user.username}({user.pk})")
                     dm_reminder_posted += 1
                 except Exception as e:
                     error(f"Exception during commenting post: {e}")
-                    if 'login_required' in str(e):
+                    if "login_required" in str(e):
                         error("Instagram login required during liking and commenting")
                         self.login_user()
             info(
-                f"DM reminder posted for user: {user.username}({user.pk}) - {dm_reminder_posted}")
+                f"DM reminder posted for user: {user.username}({user.pk}) - {dm_reminder_posted}"
+            )
             if total_users_reached >= limit:
                 break
         info(f"Total users reached: {total_users_reached}")
 
 
 if __name__ == "__main__":
-    res = requests.get("https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25", headers={
-        "Authorization": "Token 466325df764dcb62939398699aa93d167d15fbd6"}).text
-    list = json.loads(res)
-    ips = []
-    for result in list['results']:
-        ip = f"{result['proxy_address']}:{str(result['port'])}"
-        ips.append(ip)
-    print(ips)
-    ip = requests.get(
-        "https://ipv4.webshare.io/",
-        proxies={
-            "http": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/",
-            "https": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/"
-        }
-    ).text
-    print(ip)
-    # apiManager = InstagramAPIManager(
-    #     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther, 'd2yo3eg26w', 'ILZK7z8n', proxy=f'{ip}:80')
+    # res = requests.get("https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25", headers={
+    #     "Authorization": "Token 466325df764dcb62939398699aa93d167d15fbd6"}).text
+    # list = json.loads(res)
+    # ips = []
+    # for result in list['results']:
+    #     ip = f"{result['proxy_address']}:{str(result['port'])}"
+    #     ips.append(ip)
+    # print(ips)
+    # ip = requests.get(
+    #     "https://ipv4.webshare.io/",
+    #     proxies={
+    #         "http": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/",
+    #         "https": "http://niqgiyim-rotate:1fslh9b34rss@p.webshare.io:80/"
+    #     }
+    # ).text
+    # print(ip)
+    apiManager = InstagramAPIManager(
+        InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther,
+        "ugo04jb0uq",
+        "fqZYUn0Q",
+    )
+    influencers = apiManager.get_non_private_influencers(seed_query="trading")
+    print(len(influencers))
     # apiManager.publish_image_story(
     #     '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', 'crypto_news_pulse')
     # links = [StoryLink(
