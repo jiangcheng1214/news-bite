@@ -1,4 +1,3 @@
-import requests
 import json
 import random
 import time
@@ -8,14 +7,14 @@ from utils.Constants import (
     DM_IG_ACCOUNT_INDEX,
     DM_IG_ACCOUNTS,
     PAST_DM_USER_IDS_REDIS_KEY_CRYPTO,
-    PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
     TODO_DM_USER_IDS_REDIS_KEY_CRYPTO,
+    VISITED_INFLUENCER_ID_DICT_REDIS_KEY_CRYPTO,
 )
 from utils.RedisClient import RedisClient
-from instagrapi.types import StoryHashtag, StoryLink, StoryMention
+from instagrapi.types import StoryLink
 from utils.Logging import error, info, warn
 from instagrapi import Client
-from instagrapi.exceptions import LoginRequired, UnknownError
+from instagrapi.exceptions import LoginRequired
 from enum import Enum
 from typing import Dict, List
 import os
@@ -62,37 +61,55 @@ def record_dm_user_ids(
     )
 
 
-def get_past_visited_influencer_ids(
+def get_visited_influencer_id_dict(
     accountType: InstagramAPIManagerAccountType,
-) -> set[str]:
+) -> dict[str:int]:
     assert (
         accountType
         == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
     )
-    past_visited_influencer_ids_str = RedisClient.shared().get(
-        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO
+    visited_influencer_id_dict_str = RedisClient.shared().get(
+        VISITED_INFLUENCER_ID_DICT_REDIS_KEY_CRYPTO
     )
-    if past_visited_influencer_ids_str:
-        past_visited_influencer_ids = set(json.loads(past_visited_influencer_ids_str))
+    if visited_influencer_id_dict_str:
+        visited_influencer_id_dict = json.loads(visited_influencer_id_dict_str)
     else:
-        past_visited_influencer_ids = set()
-    return past_visited_influencer_ids
+        visited_influencer_id_dict = {}
+    result = {}
+    for k, v in visited_influencer_id_dict.items():
+        if type(v) != int:
+            continue
+        current_time = int(time.time())
+        if current_time - v < 60 * 60 * 24 * 30:
+            result[k] = v
+    return visited_influencer_id_dict
 
 
-def record_visited_influencer_id(
+def add_visited_influencer_id(
     accountType: InstagramAPIManagerAccountType, influencer_id: str
 ):
     assert (
         accountType
         == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
     )
-    past_visited_influencer_ids = get_past_visited_influencer_ids(accountType)
-    past_visited_influencer_ids.add(influencer_id)
-    past_visited_influencer_ids = list(past_visited_influencer_ids)
+    visited_influencer_id_dict = get_visited_influencer_id_dict(accountType)
+    visited_influencer_id_dict[influencer_id] = int(time.time())
     RedisClient.shared().set(
-        PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO,
-        json.dumps(past_visited_influencer_ids),
-        ex=60 * 60 * 24 * 7,
+        VISITED_INFLUENCER_ID_DICT_REDIS_KEY_CRYPTO,
+        json.dumps(visited_influencer_id_dict),
+        ex=60 * 60 * 24 * 30,
+    )
+
+
+def clear_visited_influencer_ids(
+    accountType: InstagramAPIManagerAccountType,
+):
+    assert (
+        accountType
+        == InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+    )
+    RedisClient.shared().delete(
+        VISITED_INFLUENCER_ID_DICT_REDIS_KEY_CRYPTO,
     )
 
 
@@ -378,6 +395,7 @@ class InstagramAPIManager:
         for candidate in publish_candidates:
             if candidate.post_image_path is None:
                 continue
+            most_recent_post_ins_ids_before_post = self.get_most_recent_posted_ins_ids()
             try:
                 enriched_content = f"{candidate.content}\n{candidate.hashtags_str}"
                 publish_result = self.client.photo_upload(
@@ -386,19 +404,45 @@ class InstagramAPIManager:
                 info(
                     f"published instagram image: {candidate.post_image_path}. publish_result: {publish_result}"
                 )
-                publish_count += 1
             except Exception as e:
-                if (
-                    "feedback_required: We restrict certain activity to protect our community"
-                    in str(e)
-                ):
-                    info(f"Published instagram image: {candidate.post_image_path}")
-                    publish_count += 1
-                else:
-                    error(f"Exception in posting instagram image: {e}")
-            finally:
-                if publish_count >= publish_limit:
-                    break
+                error(f"Exception in posting instagram image: {e}")
+            most_recent_post_ins_ids = self.get_most_recent_posted_ins_ids()
+            if (
+                len(most_recent_post_ins_ids) == 0
+                or len(most_recent_post_ins_ids_before_post) == 0
+            ):
+                error(
+                    f"ERROR when fetching most recent posts: most_recent_post_ins_ids: {most_recent_post_ins_ids}, most_recent_posted_ins_id_before_post: {most_recent_post_ins_ids_before_post}"
+                )
+                continue
+            most_recent_post_ins_id = most_recent_post_ins_ids[0]
+            most_recent_post_ins_id_before_post = most_recent_post_ins_ids_before_post[
+                0
+            ]
+            info(
+                f"most_recent_post_ins_id: {most_recent_post_ins_id}, most_recent_post_ins_id_before_post: {most_recent_post_ins_id_before_post}"
+            )
+            if most_recent_post_ins_id != most_recent_post_ins_id_before_post:
+                publish_count += 1
+                try:
+                    info(
+                        f"New post id: {most_recent_post_ins_id}, news_url: {candidate.news_url}"
+                    )
+                    link_conmment_content = f"News Source:\n{candidate.news_url}"
+                    comment_result = self.client.media_comment(
+                        most_recent_post_ins_id, link_conmment_content
+                    )
+                    info(
+                        f"Commented link: {candidate.news_url} comment_result: {comment_result}"
+                    )
+                except Exception as e:
+                    error(f"Exception in commenting link: {e}")
+
+            if publish_count >= publish_limit:
+                break
+            time.sleep(
+                random.randint(20, 30)
+            )  # sleep for 20-30 seconds between each post to avoid instagram ban
 
     def publish_image_story(
         self, publish_candidates: List[InstagramPostCandidate], publish_limit=1
@@ -445,6 +489,9 @@ class InstagramAPIManager:
                     raise e
             if published_story_count >= publish_limit:
                 break
+            time.sleep(
+                random.randint(20, 30)
+            )  # sleep for 20-30 seconds between each post to avoid instagram ban
 
     def get_most_similar_posted_ins_and_similarity_score(self, content: str):
         user_id = self.client.user_id
@@ -470,9 +517,59 @@ class InstagramAPIManager:
                 )
         return most_similar_post, most_similar_post_similarity_score
 
-    def comment_media_from_searched_users(
-        self, seed_search_query, comment_text, like_limit=20
-    ):
+    def get_most_recent_posted_ins_ids(self, user_id=None):
+        if not user_id:
+            user_id = self.client.user_id
+        medias = self.client.user_medias(user_id, amount=20)
+        medias = sorted(medias, key=lambda x: x.pk, reverse=True)
+        return [media.pk for media in medias]
+
+    def dm_influencers(self, seed_query, total_users_to_reach=10):
+        matched_users = self.client.search_users(
+            seed_query
+        )  # normally 20 will be returned
+        info(
+            f"dm_influencers: Matched users: {len(matched_users)} for query: {seed_query}"
+        )
+        user_ids_reached = []
+        visited_influencers_dict = get_visited_influencer_id_dict(
+            InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
+        )
+        for user in matched_users:
+            if user.pk in visited_influencers_dict:
+                info(f"Skip reaching out visited user: {user.username}")
+                continue
+            dm_message_1 = f"Hey {user.full_name}, as an official partner with BingX, we're excited to extend an exclusive offer: [40% discount on crypto trading fee at BingX].\nThe offer is automatically applied when you sign up using the link below:\n\nhttps://bingx.com/en-us/invite/MUPZYNVN"
+            dm_message_2 = f"To be completely transparent on how this works, you'll receive 40% commission rebate in USDT every day, we'll receive a modest 2.5% service fee from BingX.\nWe also offer other incentive programs for qualified crypto traders or influencers. Feel free to reply if you have any questions.\nLooking forward to connecting!\n - the Crypto News Pulse operation team"
+            bingx_photo_path = os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "static",
+                "bingx_en.jpg",
+            )
+            try:
+                self.client.direct_send(dm_message_1, [user.pk])
+                time.sleep(random.randint(15, 20))
+                self.client.direct_send_photo(bingx_photo_path, [user.pk])
+                time.sleep(random.randint(15, 20))
+                self.client.direct_send(dm_message_2, [user.pk])
+                info(f"Sent DM to user: {user.username}({user.pk})")
+                user_ids_reached.append(user.pk)
+                add_visited_influencer_id(
+                    InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto,
+                    user.pk,
+                )
+                time.sleep(random.randint(15, 20))
+            except Exception as e:
+                error(f"Exception in sending DM to user: {e}")
+                continue
+            if len(user_ids_reached) >= total_users_to_reach:
+                break
+        info(f"Total influencer reached: {len(user_ids_reached)}")
+        return user_ids_reached
+
+    def comment_media_from_searched_users(self, seed_search_query, comment_text):
         matched_users = self.client.search_users(
             seed_search_query
         )  # normally 20 will be returned
@@ -604,11 +701,13 @@ if __name__ == "__main__":
     # print(ip)
     apiManager = InstagramAPIManager(
         InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeOther,
-        "ugo04jb0uq",
-        "fqZYUn0Q",
+        "58pjoy1f",
+        "HgMHufzr",
     )
-    influencers = apiManager.get_non_private_influencers(seed_query="trading")
-    print(len(influencers))
+    user_id = apiManager.client.user_id_from_username("crypto_news_pulse")
+    post_ids = apiManager.get_most_recent_posted_ins_ids(user_id)
+    print(post_ids)
+
     # apiManager.publish_image_story(
     #     '/Users/chengjiang/Dev/NewsBite/data/fintech_1690581671.jpg', 'crypto_news_pulse')
     # links = [StoryLink(

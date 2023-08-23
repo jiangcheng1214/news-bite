@@ -164,7 +164,7 @@ def maintain_todo_dm_user_pool():
                     todo_dm_user_ids,
                 )
                 info(
-                    f"users pool size (before: ${base_pool_size}) / (delta: ${delta_pool_size}) / (current: ${current_pool_size}) / (target: {dm_pool_size_target}) influencer: {influencer.username}"
+                    f"users pool size (before: {base_pool_size}) / (delta: {delta_pool_size}) / (current: {current_pool_size}) / (target: {dm_pool_size_target}) influencer: {influencer.username}"
                 )
                 if len(todo_dm_user_ids) >= dm_pool_size_target:
                     break
@@ -178,7 +178,7 @@ def maintain_todo_dm_user_pool():
             )
     if consecitive_zero_count == CONSECUTIVE_FAILURE_THRESHOLD:
         error(
-            f"Failed to get enough users to DM in ${CONSECUTIVE_FAILURE_THRESHOLD} consecutive attempts(accounts), early return"
+            f"Failed to get enough users to DM in {CONSECUTIVE_FAILURE_THRESHOLD} consecutive attempts(accounts), early return"
         )
     info(f"todo DM user pool size:{len(todo_dm_user_ids)}")
 

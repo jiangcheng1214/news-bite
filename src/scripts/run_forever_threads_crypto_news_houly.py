@@ -1,4 +1,5 @@
 import datetime
+import random
 from instagram.InstagramAPIManager import (
     InstagramAPIManager,
     InstagramAPIManagerAccountType,
@@ -25,6 +26,13 @@ posterGenerator = PosterGenerator()
 instagramAPIManager = InstagramAPIManager(
     InstagramAPIManagerAccountType.InstagramAPIManagerAccountTypeCrypto
 )
+
+dm_search_seeds = [
+    "crypto trading",
+    "crypto trader",
+    "crypto currency trading",
+    "crypto currency",
+]
 
 
 def run():
@@ -68,16 +76,25 @@ def run():
             if "login_required" in str(e):
                 error("Instagram login required during posting image")
                 instagramAPIManager.login_user()
-            if "Please wait a few minutes before you try again" in str(e):
+            elif "Please wait a few minutes before you try again" in str(e):
                 error("ip was possibly banned by instagram. Try login with proxy")
                 proxy = get_next_proxy()
                 instagramAPIManager.login_user(proxy=proxy)
+            else:
+                error("Error posting image: " + str(e))
 
     # comment related posts
-    comment_text_with_news_content = news_items[0].news_content
-    instagramAPIManager.comment_media_from_searched_users(
-        "crypto currency", comment_text_with_news_content
-    )
+    # comment_text_with_news_content = news_items[0].news_content
+    # instagramAPIManager.comment_media_from_searched_users(
+    #     "crypto currency", comment_text_with_news_content
+    # )
+    try:
+        random_index = random.randint(0, len(dm_search_seeds) - 1)
+        search_seed = dm_search_seeds[random_index]
+        instagramAPIManager.dm_influencers(search_seed, total_users_to_reach=5)
+        # TODO: comment on dm users
+    except Exception as e:
+        error(f"Exception in dm_influencers: {e}")
     # post threads
     threadAPIManager.post_threads(news_items, post_limit=5)
 

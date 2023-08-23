@@ -38,7 +38,7 @@ THREADS_SIMILARITY_FOR_REPLY = 0.8
 
 PAST_DM_USER_IDS_REDIS_KEY_CRYPTO = 'past_dm_user_ids_crypto'
 TODO_DM_USER_IDS_REDIS_KEY_CRYPTO = 'todo_dm_user_ids_crypto'
-PAST_VISITED_INFLUENCER_IDS_REDIS_KEY_CRYPTO = 'past_visited_influencer_ids_crypto'
+VISITED_INFLUENCER_ID_DICT_REDIS_KEY_CRYPTO = 'visited_influencer_id_dict_crypto'
 DM_IG_ACCOUNTS = 'dm_ig_accounts'
 DM_IG_ACCOUNT_INDEX = 'dm_ig_account_index'
 

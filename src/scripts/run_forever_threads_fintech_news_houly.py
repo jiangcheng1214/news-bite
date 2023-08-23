@@ -101,10 +101,10 @@ def run():
                 instagramAPIManager.login_user(proxy=proxy)
 
     # comment related posts
-    comment_text_with_news_content = general_news_post_candidate_list[0].news_content
-    instagramAPIManager.comment_media_from_searched_users(
-        "stock trading", comment_text_with_news_content
-    )
+    # comment_text_with_news_content = general_news_post_candidate_list[0].news_content
+    # instagramAPIManager.comment_media_from_searched_users(
+    #     "stock trading", comment_text_with_news_content
+    # )
     # post threads
     threadsAPIManager.post_threads(general_news_post_candidate_list, post_limit=2)
     threadsAPIManager.post_threads(ticker_news_post_candidate_list, post_limit=4)

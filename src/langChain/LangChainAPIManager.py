@@ -10,6 +10,7 @@ from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
@@ -18,7 +19,8 @@ OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 class LangChainAPIManager:
     def __init__(self):
         self.chatModel = ChatOpenAI(
-            temperature=0.2, openai_api_key=OPENAI_KEY, model='gpt-3.5-turbo-16k-0613')
+            temperature=0.2, openai_api_key=OPENAI_KEY, model="gpt-4"
+        )
 
     """
     Generate tweet content and hashtags:
@@ -30,18 +32,25 @@ class LangChainAPIManager:
 
     def generate_tweet_dict(self, title, abstract, topics, source):
         response_schemas = [
-            ResponseSchema(name='tweet_content',
-                           description='Tweet content without hashtags'),
-            ResponseSchema(name='hashtags',
-                           description='Hashtags based on the content'),
+            ResponseSchema(
+                name="tweet_content", description="Tweet content without hashtags"
+            ),
+            ResponseSchema(
+                name="hashtags", description="Hashtags based on the content"
+            ),
         ]
         output_parser = StructuredOutputParser.from_response_schemas(
-            response_schemas=response_schemas)
+            response_schemas=response_schemas
+        )
         format_instructions = output_parser.get_format_instructions()
         # print(format_instructions)
 
         template = """
-        Based on a given news, generate tweet content (less than 260 chars) and refine it to be easy to understand. Also generate relavant hashtags.\n
+        You are a helpful tweet content generator.
+        Based on a given news, generate tweet content which should be less than 260 chars.
+        The generated content needs to be easy to understand for people with no access to news source.
+        You shouldn't miss any key points of the given news.
+        You need to generate relavant hashtags as well.\n
 
         {format_instructions}
 
@@ -53,20 +62,30 @@ class LangChainAPIManager:
         % YOUR RESPONSE %:\n
         """
 
-        prompt = PromptTemplate(template=template, input_variables=[
-                                'news_title', 'news_abstract', 'news_topics', 'news_source'],
-                                partial_variables={"format_instructions": format_instructions})
+        prompt = PromptTemplate(
+            template=template,
+            input_variables=[
+                "news_title",
+                "news_abstract",
+                "news_topics",
+                "news_source",
+            ],
+            partial_variables={"format_instructions": format_instructions},
+        )
 
         prompt_values = prompt.format(
             news_title=title,
             news_abstract=abstract,
             news_topics=topics,
-            news_source=source
+            news_source=source,
         )
-        result = self.chatModel([
-            SystemMessage(
-                content="You will help generate tweet content based on given information, including news title, news abstract, news topics and news source."),
-            HumanMessage(content=prompt_values)
-        ])
+        result = self.chatModel(
+            [
+                SystemMessage(
+                    content="You will help generate tweet content based on given information, including news title, news abstract, news topics and news source."
+                ),
+                HumanMessage(content=prompt_values),
+            ]
+        )
         parsed_result = output_parser.parse(result.content)
         return parsed_result
