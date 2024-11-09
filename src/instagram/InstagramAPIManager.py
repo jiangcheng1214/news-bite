@@ -684,7 +684,7 @@ class InstagramAPIManager:
 
 if __name__ == "__main__":
     # res = requests.get("https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25", headers={
-    #     "Authorization": "Token 466325df764dcb62939398699aa93d167d15fbd6"}).text
+    #     "Authorization": "Token "}).text
     # list = json.loads(res)
     # ips = []
     # for result in list['results']:
